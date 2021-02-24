@@ -1,0 +1,6 @@
+#exclude vscode config
+.vscode/
+
+# exclude exe and out files
+*.exe
+*.out
