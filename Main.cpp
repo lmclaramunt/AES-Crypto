@@ -52,7 +52,7 @@ void printBlocks(vector<Block>& blocks){
 }
 
 int main(){
-    string input = "Hello World! CSE 569 Project: AES";
+    string input = "Hello World! CSE 569 Project: AES...";
     vector<Block> blocks;
     getInputBlocks(input, blocks);
     printBlocks(blocks);
