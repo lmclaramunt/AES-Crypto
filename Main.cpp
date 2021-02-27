@@ -10,11 +10,11 @@ const int Nb = 4;
 
 //Structure used to store Blocks of 128 bits - (int)16 char  
 struct Block{
-    int s[4*Nb];
+    char s[4*Nb];        
 };
 
 struct State{
-    int s[4][Nb];
+    char s[4][Nb];       
 };
 
 //Make sure the input will have `10` so its a multiple of 16 (128 bits)
@@ -41,7 +41,7 @@ void getInputBlocks(string& input, vector<Block>& blocks){
         string str_obj(input.substr(i, 16));        //Get the next substring of 16 char, 128 bits
         Block newBlock;
         for(int j = 0; j < 16; j++){
-            newBlock.s[j] = (int)str_obj[j];       //Store char as int
+            newBlock.s[j] = str_obj[j];       //Store char as int
         }
         blocks.push_back(newBlock);                //Store in block
     }
