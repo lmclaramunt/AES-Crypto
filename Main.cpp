@@ -52,7 +52,7 @@ void printBlocks(vector<Block>& blocks){
     for(auto w = blocks.begin(); w != blocks.end(); ++w){
         Block b = *w;
         for(int i = 0; i < 16; i++){
-            cout << hex << b.s[i] << " ";
+            cout << hex << (int)b.s[i] << " ";
         }
         cout<<endl;
     }
@@ -73,7 +73,7 @@ State inputToState(Block block) {
 void printState(State state) {
     for (int i=0; i < 4; i++) {
         for (int j=0; j < 4; j++) {
-            std::cout << state.s[i][j] << ' ';
+            std::cout << hex <<(int)state.s[i][j] << ' ';
         }
         std::cout << "\n";
     }
@@ -82,7 +82,7 @@ void printState(State state) {
 // function to print hex value of each number in the state
 void printBlock(Block block) {
     for (int i=0; i < 4*Nb; i++) {
-        std::cout << block.s[i] << ' ';
+        std::cout << hex << (int)block.s[i] << ' ';
     }
     std::cout << "\n";
 }
