@@ -7,14 +7,16 @@
 #include "State.hpp"
 
 class Cipher{
-    string input;
-    string output;
-    string key;
+    Sequence* input;
+    Sequence* output;
+    Sequence* key;
 public:
+    Cipher(Sequence* inString, Sequence* key);
     void addRoundKey();
     void subBytes();
-    void misColumns();
-    void mixColumns();
+    void shiftRows();
+    // void mixColumns();
+    Sequence* getOutputSq() const;
 };
 
 #endif /* Cipher_hpp */

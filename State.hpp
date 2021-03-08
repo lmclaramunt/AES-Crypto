@@ -12,6 +12,7 @@ class State{
 public:
     State(Sequence* sq);
     unsigned char** getStateArray() const;
+    void setStateArray(unsigned char** newS) const;
     friend ostream& operator<<(ostream& os, const State& state);
 };
 
