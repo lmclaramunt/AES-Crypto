@@ -1,6 +1,7 @@
 #include <cstring>
-#include "Block.hpp"
-#include "State.hpp"
+#include "Block.cpp"
+#include "State.cpp"
+#include "Cipher.cpp"
 
 using namespace std;
 
@@ -24,9 +25,12 @@ int main(){
     Block block(&input);
     cout<<"Input Block:\n"<<block;
     vector<Sequence> sqVct =  block.getSequenceVector();
+    Cipher cp;
     for(Sequence sq: sqVct){
         State state(&sq);
-        cout<<"State:\n"<<state;
+        cout<<"Original State:\n"<<state;
+        cp.shiftRows(state.getStateArray());
+        cout<<"Shifted State:\n"<<state;
     }
     
     return 0;
