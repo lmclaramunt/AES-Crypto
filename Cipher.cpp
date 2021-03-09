@@ -29,13 +29,15 @@ unsigned char gFMultiply(int matrixValue, unsigned char stateVal){
 void mixColumns(unsigned char** s, unsigned char** s2){
     int matrixValues[4] = {0x02, 0x03, 0x01, 0x01};
     for (int i=0; i < 4; i++) {
-        s2[i] = new unsigned char[4];
         for (unsigned int j=0; j < 4; j++) {
+            if (i==0) {
+                s2[j] = new unsigned char[4];
+            }
             unsigned int temp = 0;
             for (unsigned int k=0; k < 4; k++) {
                 temp ^= gFMultiply(matrixValues[(k-j)%4], s[k][i]);
             }
-            s2[i][j] = temp;
+            s2[j][i] = temp;
         }
     }
 }
