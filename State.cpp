@@ -34,10 +34,6 @@ unsigned char** State::getStateArray() const{
 /*
  *  Setters
  */
-void State::setStateArray(unsigned char** newS) const{
-    for (int i=0; i < 4; i++) {
-        for (int j=0; j < 4; j++) {
-            s[i][j] = newS[j][i];
-        }
-    }
+void State::setStateArray(unsigned char** newS){
+    s = newS;
 }
