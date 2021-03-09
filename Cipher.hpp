@@ -4,9 +4,11 @@
 #define Cipher_hpp
 
 #include <stdio.h>
+#include <bits/stdc++.h>
 #include "State.hpp"
 
 class Cipher{
+    const static unsigned char sbox[16][16];
     string input;
     string output;
     string key;
@@ -16,7 +18,7 @@ private:
 public:
     Cipher();
     void addRoundKey();
-    void subBytes();
+    void subBytes(unsigned char** st);
     void shiftRows(unsigned char** st);
     void mixColumns();
 };

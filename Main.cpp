@@ -29,8 +29,8 @@ int main(){
     for(Sequence sq: sqVct){
         State state(&sq);
         cout<<"Original State:\n"<<state;
-        cp.shiftRows(state.getStateArray());
-        cout<<"Shifted State:\n"<<state;
+        cp.subBytes(state.getStateArray());
+        cout<<"Sub Bytes State:\n"<<state;
     }
     
     return 0;
