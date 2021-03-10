@@ -30,3 +30,10 @@ ostream& operator<<(ostream& os, const State& state){
 unsigned char** State::getStateArray() const{
     return s;
 }
+
+/*
+ *  Setters
+ */
+void State::setStateArray(unsigned char** newS){
+    s = newS;
+}
