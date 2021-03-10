@@ -15,14 +15,16 @@ class Cipher{
 private:
     void shiftColumnsByOne(unsigned char** st, int* row, bool rightDir);
     void shiftColumnsByTwo(unsigned char** st, int* row);
+    unsigned char xTime(unsigned char stateVal);
+    unsigned char gFMultiply(int matrixValue, unsigned char stateVal);
 public:
     Cipher();
     Cipher(Sequence* inString, Sequence* key);
     void addRoundKey();
     void subBytes(unsigned char** st);
     void shiftRows(unsigned char** st);
-    void mixColumns();
-    // void mixColumns();
+    void mixColumns(unsigned char** st, unsigned char** s2);
+    Sequence* encrypt(Sequence* input, Sequence* key);    
     Sequence* getOutputSq() const;
 };
 

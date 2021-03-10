@@ -22,7 +22,28 @@ const unsigned char Cipher::sbox[16][16] = {
         {0xe1 ,0xf8 ,0x98 ,0x11 ,0x69 ,0xd9 ,0x8e ,0x94 ,0x9b ,0x1e ,0x87 ,0xe9 ,0xce ,0x55 ,0x28 ,0xdf},
         {0x8c ,0xa1 ,0x89 ,0x0d ,0xbf ,0xe6 ,0x42 ,0x68 ,0x41 ,0x99 ,0x2d ,0x0f ,0xb0 ,0x54 ,0xbb ,0x16}};
 
-Cipher::Cipher(){}
+//Initialize a input and key
+Cipher::Cipher(Sequence* inString, Sequence* key){
+    input = inString;
+    key = key;
+    output = encrypt(input, key);
+}
+
+/**
+ Substitute each byte in the State using S-Box
+ @param st - 2D 4x4 State array that will be modified
+ */
+void Cipher::subBytes(unsigned char** st){
+    for(int row = 0; row < 4; row++){
+        for(int column = 0; column < 4; column++){
+            bitset<8> subBits(st[row][column]);
+            string bitString = subBits.to_string();
+            bitset<4> rowBits(bitString.substr(0, 4));
+            bitset<4> columnBits(bitString.substr(4, 4));
+            st[row][column] = sbox[rowBits.to_ullong()][columnBits.to_ullong()];
+        }
+    }
+}
 
 /*
  Shift the columns within the State's row by the row number
@@ -35,6 +56,7 @@ void Cipher::shiftRows(unsigned char** st){
     shiftColumnsByTwo(st, &(++row));
     shiftColumnsByOne(st, &(++row), false);   //Shift to the left by 1 is equivalent to shift to the right by 3
 }
+
 /**
  Shift Columns in a State by one to either the left or right direction
  @param st - 2D State array that will be modified
@@ -59,45 +81,6 @@ void Cipher::shiftColumnsByOne(unsigned char** st, int* row, bool rightDir){
     }
 }
 
-// method to find xtime()
-unsigned char xTime(unsigned char stateVal) {
-    // cout<<hex<<(int)stateVal<<" ";
-    if ((int)stateVal <= 128) {
-        return stateVal<<1;
-    }
-    return (stateVal<<1)^0x1b;
-}
-
-// method to find the value of the mix column state
-unsigned char gFMultiply(int matrixValue, unsigned char stateVal){
-    if (matrixValue == 0x01) {
-        return stateVal;
-    }
-    else if (matrixValue == 0x03) {
-        return xTime(stateVal)^stateVal;
-    }
-    else {
-        return xTime(stateVal);
-    }
-}
-
-// function to mix the columns of the state
-void mixColumns(unsigned char** s, unsigned char** s2){
-    int matrixValues[4] = {0x02, 0x03, 0x01, 0x01};
-    for (int i=0; i < 4; i++) {
-        for (unsigned int j=0; j < 4; j++) {
-            if (i==0) {
-                s2[j] = new unsigned char[4];
-            }
-            unsigned int temp = 0;
-            for (unsigned int k=0; k < 4; k++) {
-                temp ^= gFMultiply(matrixValues[(k-j)%4], s[k][i]);
-            }
-            s2[j][i] = temp;
-        }
-    }
-}
-
 /**
  Shift Columns in a State by two
     st[0] <--> st[2]
@@ -113,46 +96,64 @@ void Cipher::shiftColumnsByTwo(unsigned char** st, int* row){
     }
 }
 
-/**
- Substitute each byte in the State using S-Box
- @param st - 2D 4x4 State array that will be modified
- */
-void Cipher::subBytes(unsigned char** st){
-    for(int row = 0; row < 4; row++){
-        for(int column = 0; column < 4; column++){
-            bitset<8> subBits(st[row][column]);
-            string bitString = subBits.to_string();
-            bitset<4> rowBits(bitString.substr(0, 4));
-            bitset<4> columnBits(bitString.substr(4, 4));
-            st[row][column] = sbox[rowBits.to_ullong()][columnBits.to_ullong()];
+// method to find xtime()
+unsigned char Cipher::xTime(unsigned char stateVal) {
+    // cout<<hex<<(int)stateVal<<" ";
+    if ((int)stateVal <= 128) {
+        return stateVal<<1;
+    }
+    return (stateVal<<1)^0x1b;
+}
+
+// method to find the value of the mix column state
+unsigned char Cipher::gFMultiply(int matrixValue, unsigned char stateVal){
+    if (matrixValue == 0x01) {
+        return stateVal;
+    }
+    else if (matrixValue == 0x03) {
+        return xTime(stateVal)^stateVal;
+    }
+    else {
+        return xTime(stateVal);
+    }
+}
+
+// function to mix the columns of the state
+void Cipher::mixColumns(unsigned char** st, unsigned char** s2){
+    int matrixValues[4] = {0x02, 0x03, 0x01, 0x01};
+    for (int i=0; i < 4; i++) {
+        for (unsigned int j=0; j < 4; j++) {
+            if (i==0) {
+                s2[j] = new unsigned char[4];
+            }
+            unsigned int temp = 0;
+            for (unsigned int k=0; k < 4; k++) {
+                temp ^= gFMultiply(matrixValues[(k-j)%4], st[k][i]);
+            }
+            s2[j][i] = temp;
         }
     }
 }
 
 // method to encrypt input using key
-Sequence* encrypt(Sequence* input, Sequence* key) {
+Sequence* Cipher::encrypt(Sequence* input, Sequence* key) {
     State state(input);
-    cout<<"State:\n"<<state;
-    cout<<endl;
+    cout<<"State:\n"<<state<<endl;
+
     unsigned char** s2 = new unsigned char*[4];
     // AddRoundKey(state, w[0, Nb-1])
     // for # rounds
-    // SubBytes(state) // See Sec. 5.1.1
-    // ShiftRows(state)
+    subBytes(state.getStateArray());
+    cout<<"State after SubBytes:\n"<<state<<endl;
+    shiftRows(state.getStateArray());
+    cout<<"State after Shift Rows:\n"<<state<<endl;
     mixColumns(state.getStateArray(), s2);
     // AddRoundKey(state, w[0, Nb-1])
     // end for
     state.setStateArray(s2);
-    cout<<"State after one mix columns:\n"<<state;
-    cout<<endl;
-    return input;
-}
+    cout<<"State after MixColumns:\n"<<state<<endl;
 
-//Initialize a input and key
-Cipher::Cipher(Sequence* inString, Sequence* key){
-    input = inString;
-    key = key;
-    output = encrypt(input, key);
+    return input;
 }
 
 /*

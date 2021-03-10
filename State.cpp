@@ -31,6 +31,16 @@ unsigned char** State::getStateArray() const{
     return s;
 }
 
+Sequence State::toSequence() const{
+    Sequence sq;
+    for(int column = 0; column < 4; column++){
+        for(int row = 0; row < 4; row++){    
+            sq.s[column + 4*row] = s[row][column];
+        }
+    }
+    return sq;
+}
+
 /*
  *  Setters
  */
