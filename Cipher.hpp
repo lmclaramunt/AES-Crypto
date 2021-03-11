@@ -17,6 +17,11 @@ private:
     void shiftColumnsByTwo(unsigned char** st, int* row);
     unsigned char xTime(unsigned char stateVal);
     unsigned char gFMultiply(int matrixValue, unsigned char stateVal);
+    void RotWord(unsigned char* w);
+    void Rcon(int c, unsigned char* ch);
+    void generateKey(int Nk, unsigned char* buff);
+    void KeyExpansion(int Nk, int Nr, unsigned char** w);
+    State& AddRoudKey(int round, unsigned char** key, State s);
 public:
     Cipher();
     Cipher(Sequence* inString, Sequence* key);
