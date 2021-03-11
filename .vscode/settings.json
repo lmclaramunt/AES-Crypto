@@ -4,6 +4,8 @@
         "vector": "cpp",
         "ostream": "cpp",
         "cstring": "cpp",
-        "string": "cpp"
+        "string": "cpp",
+        "iostream": "cpp",
+        "random": "cpp"
     }
 }
