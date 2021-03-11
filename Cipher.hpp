@@ -9,12 +9,18 @@
 class Cipher{
     string input;
     string output;
-    string key;
-public:
-    void addRoundKey();
-    void subBytes();
-    void misColumns();
-    void mixColumns();
+    private:
+        void RotWord(unsigned char* w);
+        void Rcon(int c, unsigned char* ch);
+        void generateKey(int Nk, unsigned char* buff);
+        void KeyExpansion(int Nk, int Nr, unsigned char** w);
+        State& AddRoudKey(int round, unsigned char** key, State s);
+
+    public:
+        void encrypt(Sequence* input);
+        void subBytes();
+        void misColumns();
+        void mixColumns();
 };
 
 #endif /* Cipher_hpp */

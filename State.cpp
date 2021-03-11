@@ -3,18 +3,29 @@
 
 #include "State.hpp"
 
-//Initialize a sequence of 128 bits into respective state
+/*
+ * Constructor
+ * Initialize a state of 4 x 4 characters from input sequence
+ * Params: sq -> input sequence reference
+ */
 State::State(Sequence* sq): s(new unsigned char*[4]){
     for (int i=0; i < 4; i++) {
         s[i] = new unsigned char[4];
+    }
+    for (int i=0; i < 4; i++) {
         for (int j=0; j < 4; j++) {
-            s[i][j] = (*sq).s[i + 4*j];
+            s[j][i] = (*sq).s[i + 4*j];
         }
     }
 }
 
-// function to print hex value of each char in the state
-ostream& operator<<(ostream& os, const State& state){
+/*
+ * Function to print hex value of each char in the state
+ * (Over-ridden function)
+ * Params: os -> output stream
+ *         state -> state to be printed
+ */
+ostream& operator<<(ostream& os, const State& state) {
     for (int i=0; i < 4; i++) {
         for (int j=0; j < 4; j++) {
             os << hex <<(int)state.s[i][j] << ' ';
@@ -25,8 +36,29 @@ ostream& operator<<(ostream& os, const State& state){
 }
 
 /*
- *  Getters
+ * XOR operation for states
+ * (Over-ridden function)
+ */
+State& operator^(State& a, State& b) {
+    for (int i=0; i < 4; i++) {
+        for (int j=0; j < 4; j++) {
+            a.s[i][j] ^= b.s[i][j];
+        }
+    }
+    return a;
+}
+
+/*
+ * Get state array
+ * Return: state reference pointer
  */
 unsigned char** State::getStateArray() const{
     return s;
+}
+
+/*
+ * Set state array
+ */
+void State::setStateArray(unsigned char** newS){
+    s = newS;
 }

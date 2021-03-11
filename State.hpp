@@ -8,11 +8,14 @@
 #include "Block.hpp"
 
 class State{
-    unsigned char** s;
-public:
-    State(Sequence* sq);
-    unsigned char** getStateArray() const;
-    friend ostream& operator<<(ostream& os, const State& state);
+    private:
+        unsigned char** s;
+    public:
+        State(Sequence* sq);
+        unsigned char** getStateArray() const;
+        friend ostream& operator<<(ostream& os, const State& state);
+        friend State& operator^(State& a, State& b);
+        void setStateArray(unsigned char** newS);
 };
 
 #endif /* State_hpp */
