@@ -43,7 +43,8 @@ void Cipher::subBytes(unsigned char** st){
  Shift the columns within the State's row by the row number
  Lowest positions in the row are swaped into highest positions,
  while highest positions change to lower positions
- **/
+ @param st - State whose rows will be shifted
+ */
 void Cipher::shiftRows(unsigned char** st){
     int row = 1;
     shiftColumnsByOne(st, &row, true);
@@ -131,7 +132,7 @@ void Cipher::mixColumns(unsigned char** st, unsigned char** s2){
 
 /*
  * Rotate the word left by 1 Byte and save
- * Params: w -> 4 Bytes word
+ * @param w -> 4 Bytes word
  */
 void Cipher::RotWord(unsigned char* w) {
     unsigned char tmp = w[0];
@@ -141,29 +142,31 @@ void Cipher::RotWord(unsigned char* w) {
 
 /*
  * Generate round constant word
- * Params: c -> Round contanst for Cth round
- *         buff -> Save the rcon as a word
+ * @param c -> Round contanst for Cth round
+ * @param buff -> Save the rcon as a word
  */
 void Cipher::Rcon(int c, unsigned char* buff) {
     buff[0] = 1<<c;
     buff[1] = buff[2] = buff[3] = 0;
 }
 
+/*
+   Takes four-byte input word and applies the S-box to 
+   each byte independently
+   @param wd - four byte word
+ */
 void Cipher::subWord(unsigned char* wd){
     for(int i = 0; i < 4; i++){
-        bitset<8> subBits(wd[i]);
-        string bitString = subBits.to_string();
-        bitset<4> rowBits(bitString.substr(0, 4));
-        bitset<4> columnBits(bitString.substr(4, 4));
-        wd[i] = sbox[rowBits.to_ullong()][columnBits.to_ullong()];
+        int k = (int)wd[i];
+        wd[i] = sbox[k/16][k%16];
     }
 }
 
 /*
  * Generate Nk random Integers (32 bits) and
  * save them as character
- * Params: buff -> Buffer to save the key
- *         Nk -> Key-size in words
+ * @param buff -> Buffer to save the key
+ * @param Nk -> Key-size in words
  */
 void Cipher::generateKey(int Nk, unsigned char* buff) {
     unsigned int rand[Nk], x=0;
@@ -195,9 +198,9 @@ void Cipher::generateKey(int Nk, unsigned char* buff) {
 /*
  * Generate and expand the key from Nk words(4 bytes) to
  * (Nr+1) words. (NIST doc)
- * Params: Nk -> Key-size in words
- *         Nr -> Number of rounds in AES Enc
- *         w -> (Nr+1)*4 char array to store expanded key
+ * @param Nk -> Key-size in words
+ * @param Nr -> Number of rounds in AES Enc
+ * @param w -> (Nr+1)*4 char array to store expanded key
  */
 void Cipher::keyExpansion(int Nk, int Nr, unsigned char** w) {
     unsigned char key[4*Nk], temp[4];
@@ -228,9 +231,9 @@ void Cipher::keyExpansion(int Nk, int Nr, unsigned char** w) {
 
 /*
  * AddRoundKey to the state and return
- * Params: round -> Round number
- *         w -> Stored KeyExpansion output
- *         s -> Current state of input block
+ * @param round -> Round number
+ * @param w -> Stored KeyExpansion output
+ * @param s -> Current state of input block
  */
 void Cipher::addRoudKey(int round, unsigned char** w, unsigned char** st) {
     //unsigned char** ch=s.getStateArray();
@@ -245,7 +248,7 @@ void Cipher::addRoudKey(int round, unsigned char** w, unsigned char** st) {
 
 /*
  * AES encryption routine
- * Params: input -> input string
+ * @param input -> input string
 */
 Sequence Cipher::encrypt(Sequence* input) {
     int Nr = 14, Nk = 8;
@@ -253,16 +256,31 @@ Sequence Cipher::encrypt(Sequence* input) {
     w = new unsigned char*[4*(Nr+1)];
     for(int j=0; j<4*(Nr+1); j++)
         w[j] = new unsigned char[4];
+    
     State state(input);
-
     keyExpansion(Nk, Nr, w);
+    addRoudKey(0, w, state.getStateArray());
 
-    for (int i=0; i < Nr; i++) {
+    for (int i=1; i < Nr-1; i++) {
+        unsigned char** s2 = new unsigned char*[4];
+        subBytes(state.getStateArray());
+        //cout<<"State after SubBytes:\n"<<state<<endl;
+        shiftRows(state.getStateArray());
+        //cout<<"State after Shift Rows:\n"<<state<<endl;
+        mixColumns(state.getStateArray(), s2);
+        state.setStateArray(s2);
+        //cout<<"State after Mix Columns:\n"<<state<<endl;
         addRoudKey(i, w, state.getStateArray());
-        cout << "state for :"<<i<<endl<<state<<endl;
+        //cout << "State for :"<<i<<endl<<state<<endl;
     }
-    Sequence s;
-    return s;
+
+    subBytes(state.getStateArray());
+    //cout<<"State after SubBytes:\n"<<state<<endl;
+    shiftRows(state.getStateArray());
+    //cout<<"State after Mix Columns:\n"<<state<<endl;
+    addRoudKey(Nr-1, w, state.getStateArray());
+    //cout << "Final State:"<<endl<<state<<endl;
+    return state.toSequence();
 }
 
 
