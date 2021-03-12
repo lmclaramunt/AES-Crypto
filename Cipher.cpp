@@ -35,15 +35,8 @@ Cipher::Cipher(){}
  @param st - 2D 4x4 State array that will be modified
  */
 void Cipher::subBytes(unsigned char** st){
-    for(int row = 0; row < 4; row++){
-        for(int column = 0; column < 4; column++){
-            bitset<8> subBits(st[row][column]);
-            string bitString = subBits.to_string();
-            bitset<4> rowBits(bitString.substr(0, 4));
-            bitset<4> columnBits(bitString.substr(4, 4));
-            st[row][column] = sbox[rowBits.to_ullong()][columnBits.to_ullong()];
-        }
-    }
+    for(int row = 0; row < 4; row++)
+        subWord(st[row]);
 }
 
 /*
@@ -255,14 +248,14 @@ void Cipher::addRoudKey(int round, unsigned char** w, unsigned char** st) {
  * Params: input -> input string
 */
 Sequence Cipher::encrypt(Sequence* input) {
-    int Nr = 10;
+    int Nr = 14, Nk = 8;
     unsigned char** w;
     w = new unsigned char*[4*(Nr+1)];
     for(int j=0; j<4*(Nr+1); j++)
         w[j] = new unsigned char[4];
     State state(input);
 
-    keyExpansion(4, 10, w);
+    keyExpansion(Nk, Nr, w);
 
     for (int i=0; i < Nr; i++) {
         addRoudKey(i, w, state.getStateArray());
@@ -272,14 +265,15 @@ Sequence Cipher::encrypt(Sequence* input) {
     return s;
 }
 
+
 /*
 // method to encrypt input using key
-Sequence* Cipher::encrypt(Sequence* input, Sequence* key) {
+Sequence Cipher::encrypt(Sequence* input) {
     State state(input);
     cout<<"State:\n"<<state<<endl;
 
     unsigned char** s2 = new unsigned char*[4];
-    addRoudKey(0, w[0, Nb-1], state);
+    //addRoudKey(0, w[0, Nb-1], state);
     // for # rounds
     subBytes(state.getStateArray());
     cout<<"State after SubBytes:\n"<<state<<endl;
@@ -291,6 +285,6 @@ Sequence* Cipher::encrypt(Sequence* input, Sequence* key) {
     state.setStateArray(s2);
     cout<<"State after MixColumns:\n"<<state<<endl;
 
-    return input;
+    return *input;
 }
 */

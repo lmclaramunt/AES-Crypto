@@ -6,19 +6,11 @@
 using namespace std;
 
 int main(){
-    Sequence sq = {0x32, 0x43, 0xf6, 0xa8, 
-                  0x88, 0x5a, 0x30, 0x8d, 
-                  0x31, 0x31, 0x98, 0xa2, 
-                  0xe0, 0x37, 0x07, 0x34};
-    State st(&sq);
-    cout<<st;
+    Sequence m = {0x19, 0x3d, 0xe3, 0xbe, 
+                  0xa0, 0xf4, 0xe2, 0x2b, 
+                  0x9a, 0xc6, 0x8d, 0x2a, 
+                  0xe9, 0xf8, 0x48, 0x08};
     Cipher cipher;
-    unsigned char key[32];
-    cipher.generateKey(8, key);
-    cout<<"Key:\n";
-    for(int i = 0; i < 32; i++){
-        cout<<hex<<(int)key[i]<<" ";
-    }
-    cout<<endl;
+    cipher.encrypt(&m);
     return 0;
 }
