@@ -26,8 +26,9 @@ const unsigned char Cipher::sbox[16][16] = {
 Cipher::Cipher(Sequence* inString, Sequence* key){
     input = inString;
     key = key;
-    output = encrypt(input, key);
 }
+
+Cipher::Cipher(){}
 
 /**
  Substitute each byte in the State using S-Box
@@ -135,34 +136,6 @@ void Cipher::mixColumns(unsigned char** st, unsigned char** s2){
     }
 }
 
-// method to encrypt input using key
-Sequence* Cipher::encrypt(Sequence* input, Sequence* key) {
-    State state(input);
-    cout<<"State:\n"<<state<<endl;
-
-    unsigned char** s2 = new unsigned char*[4];
-    // AddRoundKey(state, w[0, Nb-1])
-    // for # rounds
-    subBytes(state.getStateArray());
-    cout<<"State after SubBytes:\n"<<state<<endl;
-    shiftRows(state.getStateArray());
-    cout<<"State after Shift Rows:\n"<<state<<endl;
-    mixColumns(state.getStateArray(), s2);
-    // AddRoundKey(state, w[0, Nb-1])
-    // end for
-    state.setStateArray(s2);
-    cout<<"State after MixColumns:\n"<<state<<endl;
-
-    return input;
-}
-
-/*
- *  Getters
- */
-Sequence* Cipher::getOutputSq() const{
-    return output;
-}
-
 /*
  * Rotate the word left by 1 Byte and save
  * Params: w -> 4 Bytes word
@@ -181,6 +154,16 @@ void Cipher::RotWord(unsigned char* w) {
 void Cipher::Rcon(int c, unsigned char* buff) {
     buff[0] = 1<<c;
     buff[1] = buff[2] = buff[3] = 0;
+}
+
+void Cipher::subWord(unsigned char* wd){
+    for(int i = 0; i < 4; i++){
+        bitset<8> subBits(wd[i]);
+        string bitString = subBits.to_string();
+        bitset<4> rowBits(bitString.substr(0, 4));
+        bitset<4> columnBits(bitString.substr(4, 4));
+        wd[i] = sbox[rowBits.to_ullong()][columnBits.to_ullong()];
+    }
 }
 
 /*
@@ -223,8 +206,8 @@ void Cipher::generateKey(int Nk, unsigned char* buff) {
  *         Nr -> Number of rounds in AES Enc
  *         w -> (Nr+1)*4 char array to store expanded key
  */
-void Cipher::KeyExpansion(int Nk, int Nr, unsigned char** w) {
-    unsigned char key[16], temp[4];
+void Cipher::keyExpansion(int Nk, int Nr, unsigned char** w) {
+    unsigned char key[4*Nk], temp[4];
     int i = 0;
 
     generateKey(Nk, key);
@@ -240,10 +223,10 @@ void Cipher::KeyExpansion(int Nk, int Nr, unsigned char** w) {
             unsigned char rcon[4];
             Rcon(i/Nk, rcon);
             RotWord(temp);
-            //SubWord(temp);
+            subWord(temp);
             for(int j=0; j<4; j++) temp[j] ^= rcon[j];
         } else if (Nk > 6 && i % Nk == 4) {
-            //SubWord(temp);
+            subWord(temp);
         }
         for(int j=0; j<4; j++) w[i][j] = w[i-Nk][j] ^ temp[j];
         i++;
@@ -256,45 +239,58 @@ void Cipher::KeyExpansion(int Nk, int Nr, unsigned char** w) {
  *         w -> Stored KeyExpansion output
  *         s -> Current state of input block
  */
-State& Cipher::AddRoudKey(int round, unsigned char** w, State s) {
-    unsigned char** ch=s.getStateArray();
-    
-    /*
-    cout<<"state\n"<<s<<endl;
-    cout<<"key:::";
-    for (int k=4*round; k<4*(round+1); k++) {
-        for (int j=0; j < 4; j++) {
-            cout<< (int)key[k][j]<<" ";
-        }
-        cout<<endl;
-    }
-    cout<<endl;
-    */
+void Cipher::addRoudKey(int round, unsigned char** w, unsigned char** st) {
+    //unsigned char** ch=s.getStateArray();
     for (int i=4*round, k=0; i < 4*(round+1); i++, k++) {
         for (int j=0; j < 4; j++) {
-            ch[j][k] ^= w[i][j];
+            st[j][k] ^= w[i][j];
         }
     }
-    s.setStateArray(ch);
-    return s;
+    //s.setStateArray(ch);
+    //return s;
 }
 
 /*
  * AES encryption routine
  * Params: input -> input string
-
-void Cipher::encrypt(Sequence* input) {
+*/
+Sequence Cipher::encrypt(Sequence* input) {
     int Nr = 10;
     unsigned char** w;
     w = new unsigned char*[4*(Nr+1)];
-    for(int j=0; j<4*(Nr+1); j++)w[j] = new unsigned char[4];
+    for(int j=0; j<4*(Nr+1); j++)
+        w[j] = new unsigned char[4];
     State state(input);
 
-    KeyExpansion(4, 10, w);
+    keyExpansion(4, 10, w);
 
     for (int i=0; i < Nr; i++) {
-        state = AddRoudKey(i, w, state);
+        addRoudKey(i, w, state.getStateArray());
         cout << "state for :"<<i<<endl<<state<<endl;
     }
+    Sequence s;
+    return s;
 }
- */
+
+/*
+// method to encrypt input using key
+Sequence* Cipher::encrypt(Sequence* input, Sequence* key) {
+    State state(input);
+    cout<<"State:\n"<<state<<endl;
+
+    unsigned char** s2 = new unsigned char*[4];
+    addRoudKey(0, w[0, Nb-1], state);
+    // for # rounds
+    subBytes(state.getStateArray());
+    cout<<"State after SubBytes:\n"<<state<<endl;
+    shiftRows(state.getStateArray());
+    cout<<"State after Shift Rows:\n"<<state<<endl;
+    mixColumns(state.getStateArray(), s2);
+    // AddRoundKey(state, w[0, Nb-1])
+    // end for
+    state.setStateArray(s2);
+    cout<<"State after MixColumns:\n"<<state<<endl;
+
+    return input;
+}
+*/

@@ -19,18 +19,17 @@ private:
     unsigned char gFMultiply(int matrixValue, unsigned char stateVal);
     void RotWord(unsigned char* w);
     void Rcon(int c, unsigned char* ch);
-    void generateKey(int Nk, unsigned char* buff);
-    void KeyExpansion(int Nk, int Nr, unsigned char** w);
-    State& AddRoudKey(int round, unsigned char** key, State s);
+    void subWord(unsigned char* wd);
+    void keyExpansion(int Nk, int Nr, unsigned char** w);
+    void addRoudKey(int round, unsigned char** key, unsigned char** st);
 public:
     Cipher();
     Cipher(Sequence* inString, Sequence* key);
-    void addRoundKey();
     void subBytes(unsigned char** st);
     void shiftRows(unsigned char** st);
     void mixColumns(unsigned char** st, unsigned char** s2);
-    Sequence* encrypt(Sequence* input, Sequence* key);    
-    Sequence* getOutputSq() const;
+    Sequence encrypt(Sequence* input);
+    void generateKey(int Nk, unsigned char* buff);
 };
 
 #endif /* Cipher_hpp */
