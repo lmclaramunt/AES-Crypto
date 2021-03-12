@@ -147,7 +147,7 @@ void Cipher::RotWord(unsigned char* w) {
  *         buff -> Save the rcon as a word
  */
 void Cipher::Rcon(int c, unsigned char* buff) {
-    buff[0] = 1<<c;
+    buff[0] = rcon[c-1];
     buff[1] = buff[2] = buff[3] = 0;
 }
 
