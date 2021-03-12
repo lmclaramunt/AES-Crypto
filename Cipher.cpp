@@ -282,27 +282,3 @@ Sequence Cipher::encrypt(Sequence* input) {
     //cout << "Final State:"<<endl<<state<<endl;
     return state.toSequence();
 }
-
-
-/*
-// method to encrypt input using key
-Sequence Cipher::encrypt(Sequence* input) {
-    State state(input);
-    cout<<"State:\n"<<state<<endl;
-
-    unsigned char** s2 = new unsigned char*[4];
-    //addRoudKey(0, w[0, Nb-1], state);
-    // for # rounds
-    subBytes(state.getStateArray());
-    cout<<"State after SubBytes:\n"<<state<<endl;
-    shiftRows(state.getStateArray());
-    cout<<"State after Shift Rows:\n"<<state<<endl;
-    mixColumns(state.getStateArray(), s2);
-    // AddRoundKey(state, w[0, Nb-1])
-    // end for
-    state.setStateArray(s2);
-    cout<<"State after MixColumns:\n"<<state<<endl;
-
-    return *input;
-}
-*/
