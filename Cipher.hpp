@@ -4,7 +4,6 @@
 #define Cipher_hpp
 
 #include <stdio.h>
-#include <bits/stdc++.h>
 #include "State.hpp"
 
 class Cipher{
