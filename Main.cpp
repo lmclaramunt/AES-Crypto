@@ -1,33 +1,20 @@
 #include <cstring>
-#include "Block.hpp"
-#include "State.hpp"
+#include "Block.cpp"
+#include "State.cpp"
+#include "Cipher.cpp"
 
 using namespace std;
 
-// # of columns of 32-bit words in the state
-const int Nb = 4;
-
-/*
-// function to convert state to output block
-Block stateToOutput (State state) {
-    Block block;
-    for (int j=0; j < Nb; j++) {
-        for (int i=0; i < 4; i++) {
-            block.s[i+4*j] = state.s[i][j];
-        }
-    }
-    return block;
-}
-*/
 int main(){
-    string input = "Hello World! CSE 569 Project: AES...";
-    Block block(&input);
-    cout<<"Input Block:\n"<<block;
-    vector<Sequence> sqVct =  block.getSequenceVector();
-    for(Sequence sq: sqVct){
-        State state(&sq);
-        cout<<"State:\n"<<state;
+    Sequence m = {0x32, 0x43, 0xf6, 0xa8, 
+                  0x88, 0x5a, 0x30, 0x8d, 
+                  0x31, 0x31, 0x98, 0xa2, 
+                  0xe0, 0x37, 0x07, 0x34};
+    Cipher cipher;
+    Sequence sq = cipher.encrypt(&m);
+    for(int i = 0; i < 16; i++){
+        cout<<hex<<(int)sq.s[i]<<" ";
+        if(i % 4 == 3) cout<<endl;
     }
-    
     return 0;
 }
