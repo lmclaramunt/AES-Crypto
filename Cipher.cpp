@@ -104,20 +104,46 @@ unsigned char Cipher::xTime(unsigned char stateVal) {
 
 // method to find the value of the mix column state
 unsigned char Cipher::gFMultiply(int matrixValue, unsigned char stateVal){
-    if (matrixValue == 0x01) {
-        return stateVal;
+    // if (matrixValue == 0x01) {
+    //     return stateVal;
+    // }
+    // else if (matrixValue == 0x03) {
+    //     return xTime(stateVal)^stateVal;
+    // }
+    // else {
+    //     return xTime(stateVal);
+    // }
+    int mul = 0x00;
+    if (matrixValue % 0x02) {
+        mul = stateVal;
     }
-    else if (matrixValue == 0x03) {
-        return xTime(stateVal)^stateVal;
+    while (matrixValue/2) {
+        matrixValue /= 2;
+        mul ^= xTime(stateVal);
     }
-    else {
-        return xTime(stateVal);
-    }
+    return mul;
 }
 
 // function to mix the columns of the state
 void Cipher::mixColumns(unsigned char** st, unsigned char** s2){
     int matrixValues[4] = {0x02, 0x03, 0x01, 0x01};
+    for (int i=0; i < 4; i++) {
+        for (unsigned int j=0; j < 4; j++) {
+            if (i==0) {
+                s2[j] = new unsigned char[4];
+            }
+            unsigned int temp = 0;
+            for (unsigned int k=0; k < 4; k++) {
+                temp ^= gFMultiply(matrixValues[(k-j)%4], st[k][i]);
+            }
+            s2[j][i] = temp;
+        }
+    }
+}
+
+// function to inverse mix columns of the state
+void Cipher::invMixColumns(unsigned char** st, unsigned char** s2){
+    int matrixValues[4] = {0x0e, 0x0b, 0x0d, 0x09};
     for (int i=0; i < 4; i++) {
         for (unsigned int j=0; j < 4; j++) {
             if (i==0) {

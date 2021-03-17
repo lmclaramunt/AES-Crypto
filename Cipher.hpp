@@ -25,6 +25,7 @@ private:
     void subBytes(unsigned char** st);
     void shiftRows(unsigned char** st);
     void mixColumns(unsigned char** st, unsigned char** s2);
+    void invMixColumns(unsigned char** st, unsigned char** s2);
 public:
     Cipher();
     Cipher(Sequence* inString, Sequence* key);   
