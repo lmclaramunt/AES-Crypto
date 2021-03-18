@@ -15,7 +15,7 @@ private:
     void shiftColumnsByOne(unsigned char** st, int* row, bool rightDir);
     void shiftColumnsByTwo(unsigned char** st, int* row);
     unsigned char xTime(unsigned char stateVal);
-    unsigned char gFMultiply(int matrixValue, unsigned char stateVal);
+    unsigned char gFMultiply(unsigned char matrixValue, unsigned char stateVal);
     void RotWord(unsigned char* w);
     void Rcon(int c, unsigned char* ch);
     void subWord(unsigned char* wd);
