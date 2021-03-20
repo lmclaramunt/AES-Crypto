@@ -345,6 +345,10 @@ void Cipher::invSubBytes(unsigned char** st){
     }
 }
 
+/**
+ * AES Decryption 
+ * @param input - ciphertext
+ */ 
 Sequence Cipher::decrypt(Sequence* input){
 int Nr = 14, Nk = 8;
     unsigned char** w;
@@ -353,20 +357,20 @@ int Nr = 14, Nk = 8;
         w[j] = new unsigned char[4];
     
     State state(input);
-    //keyExpansion(Nk, Nr, w);
+    keyExpansion(Nk, Nr, w);
     addRoudKey(0, w, state.getStateArray());
 
     for (int i=1; i < Nr-1; i++) {
         unsigned char** s2 = new unsigned char*[4];
-        invSubBytes(state.getStateArray());
         invShiftRows(state.getStateArray());
-        //mixColumns(state.getStateArray(), s2);
-        //state.setStateArray(s2);
+        invSubBytes(state.getStateArray());
         addRoudKey(i, w, state.getStateArray());
+        invMixColumns(state.getStateArray(), s2);
+        state.setStateArray(s2);
     }
 
-    invSubBytes(state.getStateArray());
     invShiftRows(state.getStateArray());
+    invSubBytes(state.getStateArray());
     addRoudKey(Nr-1, w, state.getStateArray());
     return state.toSequence();
 }
