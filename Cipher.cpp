@@ -246,10 +246,11 @@ void Cipher::generateKey(int Nk, unsigned char* buff) {
  * @param w -> (Nr+1)*4 char array to store expanded key
  */
 void Cipher::keyExpansion(int Nk, int Nr, unsigned char** w) {
-    unsigned char key[4*Nk], temp[4];
+    unsigned char /*key[4*Nk],*/ temp[4];
     int i = 0;
 
-    generateKey(Nk, key);
+    // generateKey(Nk, key);
+    unsigned char key[] = {0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c};
     
     while(i < Nk) {
         for(int j=0; j<4; j++) w[i][j] = key[4*i+j];
@@ -291,7 +292,7 @@ void Cipher::addRoudKey(int round, unsigned char** w, unsigned char** st) {
  * @param input - input string
 */
 Sequence Cipher::encrypt(Sequence* input) {
-    int Nr = 14, Nk = 8;
+    int Nr = 10, Nk = 4;
     unsigned char** w;
     w = new unsigned char*[4*(Nr+1)];
     for(int j=0; j<4*(Nr+1); j++)
@@ -300,8 +301,9 @@ Sequence Cipher::encrypt(Sequence* input) {
     State state(input);
     keyExpansion(Nk, Nr, w);
     addRoudKey(0, w, state.getStateArray());
+    
 
-    for (int i=1; i < Nr-1; i++) {
+    for (int i=1; i < Nr; i++) {
         unsigned char** s2 = new unsigned char*[4];
         subBytes(state.getStateArray());
         shiftRows(state.getStateArray());
@@ -312,7 +314,7 @@ Sequence Cipher::encrypt(Sequence* input) {
 
     subBytes(state.getStateArray());
     shiftRows(state.getStateArray());
-    addRoudKey(Nr-1, w, state.getStateArray());
+    addRoudKey(Nr, w, state.getStateArray());
     return state.toSequence();
 }
 
@@ -371,6 +373,6 @@ int Nr = 14, Nk = 8;
 
     invShiftRows(state.getStateArray());
     invSubBytes(state.getStateArray());
-    addRoudKey(Nr-1, w, state.getStateArray());
+    addRoudKey(Nr, w, state.getStateArray());
     return state.toSequence();
 }

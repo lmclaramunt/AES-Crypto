@@ -22,7 +22,7 @@ private:
     void subWord(unsigned char* wd);
     void generateKey(int Nk, unsigned char* buff);
     void keyExpansion(int Nk, int Nr, unsigned char** w);
-    void addRoudKey(int round, unsigned char** key, unsigned char** st);
+    void addRoudKey(int round, unsigned char** w, unsigned char** st);
     void subBytes(unsigned char** st);
     void shiftRows(unsigned char** st);
     void mixColumns(unsigned char** st, unsigned char** s2);

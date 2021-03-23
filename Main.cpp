@@ -11,12 +11,12 @@ int main(){
                   0x31, 0x31, 0x98, 0xa2, 
                   0xe0, 0x37, 0x07, 0x34};
     Cipher cipher;
-    State st(&sq);
-    cout<<"Original State:\n"<<st<<endl;
-    cipher.subBytes(st.getStateArray());
-    cout<<"SubBytes:\n"<<st<<endl;
-    cipher.invSubBytes(st.getStateArray());
-    cout<<"SubBytes Rows:\n"<<st<<endl;
-    
+    Sequence ciphertext = cipher.encrypt(&sq);
+    cout<<"Ciphertext:\n";
+    for(int i =0; i< 16;i++){
+        cout<<hex<<(int)ciphertext.s[i]<<" ";
+        if(i%4==3)cout<<endl;
+    }
+
     return 0;
 }
