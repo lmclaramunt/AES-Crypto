@@ -9,22 +9,22 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include "Sequence.cpp"
 using namespace std;
 
-//Sequence of 128 bits
-struct Sequence{
-    unsigned char s[16];
-};
+// //Sequence of 128 bits
+// struct Sequence{
+//     unsigned char s[16];
+// };
 
 //Block containing a vector Sequence
 class Block{
-    string* input;
     vector<Sequence> sequenceVct;
-    void padding();
+    void padding(vector<unsigned char>* input);
 public:
-    Block(string* _input);
+    Block(vector<unsigned char>* input, bool pad);
     vector<Sequence> getSequenceVector() const;
-    string getInput() const;
+    vector<unsigned char> getInput() const;
     friend ostream& operator<<(ostream& os, const Block& block);
 };
 

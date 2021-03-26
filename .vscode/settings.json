@@ -8,6 +8,7 @@
         "ios": "cpp",
         "xstring": "cpp",
         "iostream": "cpp",
-        "random": "cpp"
+        "random": "cpp",
+        "*.tcc": "cpp"
     }
 }

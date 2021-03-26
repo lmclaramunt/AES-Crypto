@@ -42,14 +42,95 @@ const unsigned char Cipher::sboxInv[16][16] = {
         {0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d}};
 
 const unsigned char rcon[] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36};
+Cipher::Cipher(int _Nk, int _Nr): Nk(_Nk), Nr(_Nr){}
 
 //Initialize a input and key
 Cipher::Cipher(Sequence* inString, Sequence* key){
-    input = inString;
     key = key;
 }
 
-Cipher::Cipher(){}
+Cipher::Cipher(string* _textPath, int* keyLength): textPath(_textPath){
+    cryptoDir();
+    setBlockRoundCombinations(keyLength);
+    getKey();
+
+}
+
+/**
+ Set number of rounds performed during AES execution according
+ to key's length
+ @param keyLength - length in bits (128/192/256)   
+ */
+void Cipher::setBlockRoundCombinations(int* keyLength){
+    switch (*keyLength)
+    {
+    case 128:
+        Nk = 4, Nr = 10;
+        break;
+    case 192:
+        Nk = 6, Nr = 12;
+        break;
+    case 256:
+        Nk = 8, Nr = 14;
+        break;
+    default: break;
+    }
+    keyPath = home + "/AES-" + to_string(*keyLength) + ".aes";
+}
+
+/**
+ * Create directory where keys will be stored,
+ * if it doesn't exists
+ */
+void Cipher::cryptoDir(){
+    struct stat info;
+    home = getenv("HOME");
+    home += "/.crypto";
+    const char *pathname = &home[0];
+    if(stat(pathname, &info) != 0){
+        mkdir(pathname, 0600);
+    }
+}
+
+void Cipher::getKey(){
+    if(fileExists(&keyPath)){
+        readFile(keyPath, true);
+    }else{
+
+    }
+    //Expand the key
+    w = new unsigned char*[4*(Nr+1)];
+    for(int j=0; j<4*(Nr+1); j++)
+        w[j] = new unsigned char[4];
+    keyExpansion();
+}
+
+/**
+ * Read file and store its bytes in Blocks of 128 bits
+ * Padding can be done if required
+ * @param filePath - where the file is located
+ * @param padding - determines if padding is required
+ */
+Block Cipher::readFile(const string filePath, bool padding){
+    ifstream input(filePath, ios::binary);
+
+    vector<unsigned char> bytes((istreambuf_iterator<char>(input)),
+         (istreambuf_iterator<char>()));
+
+    input.close();
+    Block block(&bytes, padding);
+
+    return block;
+}
+
+/**
+ * Check if the file exists
+ * @param filePath - File's path
+ */ 
+bool Cipher::fileExists (const string* filePath) {
+  struct stat info;   
+  return stat ((*filePath).c_str(), &info) == 0; 
+}
 
 /**
  Substitute each byte in the State using S-Box
@@ -115,7 +196,7 @@ void Cipher::shiftColumnsByTwo(unsigned char** st, int* row){
 // method to find xtime()
 unsigned char Cipher::xTime(unsigned char stateVal) {
     // cout<<hex<<(int)stateVal<<" ";
-    if ((int)stateVal <= 128) {
+    if (stateVal < 0x80) {
         return stateVal<<1;
     }
     return (stateVal<<1)^0x1b;
@@ -245,7 +326,7 @@ void Cipher::generateKey(int Nk, unsigned char* buff) {
  * @param Nr -> Number of rounds in AES Enc
  * @param w -> (Nr+1)*4 char array to store expanded key
  */
-void Cipher::keyExpansion(int Nk, int Nr, unsigned char** w) {
+void Cipher::keyExpansion() {
     unsigned char /*key[4*Nk],*/ temp[4];
     int i = 0;
 
@@ -292,14 +373,12 @@ void Cipher::addRoudKey(int round, unsigned char** w, unsigned char** st) {
  * @param input - input string
 */
 Sequence Cipher::encrypt(Sequence* input) {
-    int Nr = 10, Nk = 4;
-    unsigned char** w;
     w = new unsigned char*[4*(Nr+1)];
     for(int j=0; j<4*(Nr+1); j++)
         w[j] = new unsigned char[4];
-    
+    keyExpansion();
     State state(input);
-    keyExpansion(Nk, Nr, w);
+    cout<<"Original State:\n"<<state<<endl;
     addRoudKey(0, w, state.getStateArray());
     
 
@@ -315,6 +394,7 @@ Sequence Cipher::encrypt(Sequence* input) {
     subBytes(state.getStateArray());
     shiftRows(state.getStateArray());
     addRoudKey(Nr, w, state.getStateArray());
+    cout<<"Encrypted State:\n"<<state<<endl;
     return state.toSequence();
 }
 
@@ -352,14 +432,8 @@ void Cipher::invSubBytes(unsigned char** st){
  * @param input - ciphertext
  */ 
 Sequence Cipher::decrypt(Sequence* input){
-int Nr = 14, Nk = 8;
-    unsigned char** w;
-    w = new unsigned char*[4*(Nr+1)];
-    for(int j=0; j<4*(Nr+1); j++)
-        w[j] = new unsigned char[4];
-    
     State state(input);
-    keyExpansion(Nk, Nr, w);
+    keyExpansion();
     addRoudKey(0, w, state.getStateArray());
 
     for (int i=1; i < Nr-1; i++) {

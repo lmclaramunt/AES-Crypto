@@ -3,10 +3,10 @@
 
 #include "State.hpp"
 
-/*
- * Constructor
- * Initialize a state of 4 x 4 characters from input sequence
- * Params: sq -> input sequence reference
+/**
+     Constructor
+     Initialize a state of 4 x 4 characters from input sequence
+     @param sq - input sequence reference
  */
 State::State(Sequence* sq): s(new unsigned char*[4]){
     for (int i=0; i < 4; i++) {
@@ -14,7 +14,7 @@ State::State(Sequence* sq): s(new unsigned char*[4]){
     }
     for (int i=0; i < 4; i++) {
         for (int j=0; j < 4; j++) {
-            s[i][j] = (*sq).s[i + 4*j];
+            s[i][j] = sq->getSequence()[i + 4*j];
         }
     }
 }
@@ -57,10 +57,10 @@ unsigned char** State::getStateArray() const{
 }
 
 Sequence State::toSequence() const{
-    Sequence sq;
+    Sequence sq(16);
     for(int column = 0; column < 4; column++){
         for(int row = 0; row < 4; row++){    
-            sq.s[column + 4*row] = s[row][column];
+            sq.getSequence()[column + 4*row] = s[row][column];
         }
     }
     return sq;
