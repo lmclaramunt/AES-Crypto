@@ -9,6 +9,7 @@
         "xstring": "cpp",
         "iostream": "cpp",
         "random": "cpp",
-        "*.tcc": "cpp"
+        "*.tcc": "cpp",
+        "new": "cpp"
     }
 }

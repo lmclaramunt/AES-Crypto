@@ -42,18 +42,24 @@ const unsigned char Cipher::sboxInv[16][16] = {
         {0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d}};
 
 const unsigned char rcon[] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36};
-Cipher::Cipher(int _Nk, int _Nr): Nk(_Nk), Nr(_Nr){}
 
 //Initialize a input and key
-Cipher::Cipher(Sequence* inString, Sequence* key){
-    key = key;
+Cipher::Cipher(string* _textPath, int* keyLength, bool padding): textPath(_textPath){
+    cryptoDir();
+    setBlockRoundCombinations(keyLength, true);
+    getKey();
+    vector<unsigned char> inpVct;
+    readText(&inpVct);
+    inputBlock = new Block(&inpVct, padding);
 }
 
-Cipher::Cipher(string* _textPath, int* keyLength): textPath(_textPath){
+Cipher::Cipher(string* _textPath, string* _keyPath, int* keyLength, bool padding): textPath(_textPath), keyPath(*_keyPath){
     cryptoDir();
-    setBlockRoundCombinations(keyLength);
+    setBlockRoundCombinations(keyLength, false);
     getKey();
-
+    vector<unsigned char> inpVct;
+    readText(&inpVct);
+    inputBlock = new Block(&inpVct, padding);
 }
 
 /**
@@ -61,7 +67,7 @@ Cipher::Cipher(string* _textPath, int* keyLength): textPath(_textPath){
  to key's length
  @param keyLength - length in bits (128/192/256)   
  */
-void Cipher::setBlockRoundCombinations(int* keyLength){
+void Cipher::setBlockRoundCombinations(int* keyLength, bool setKeyPath){
     switch (*keyLength)
     {
     case 128:
@@ -75,7 +81,7 @@ void Cipher::setBlockRoundCombinations(int* keyLength){
         break;
     default: break;
     }
-    keyPath = home + "/AES-" + to_string(*keyLength) + ".aes";
+    if(setKeyPath) keyPath = home + "/AES-" + to_string(*keyLength) + ".aes";
 }
 
 /**
@@ -91,43 +97,57 @@ void Cipher::cryptoDir(){
         mkdir(pathname, 0600);
     }
 }
-
+/**
+ * Get the either either from a file or generate a new one
+    if there is no key to deal with
+*/
 void Cipher::getKey(){
-    if(fileExists(&keyPath)){
-        readFile(keyPath, true);
+    unsigned char* key = new unsigned char[4*Nk];
+    ifstream input(keyPath, ios::binary);
+    if(input.is_open()){
+        for(int i=0; i < 4*Nk; i++)
+            input >> key[i];
     }else{
-
+        generateKey(key);
+        ofstream keyFile;
+        keyFile.open(keyPath);
+        keyFile << key;
+        keyFile.close();       
     }
-    //Expand the key
-    w = new unsigned char*[4*(Nr+1)];
+    for(int i=0; i < 4*Nk; i++){
+            cout<<hex<<(int)key[i]<<" ";
+            if(i%16==15)cout<<endl;
+        }
+
+    w = new unsigned char*[4*(Nr+1)];    //Expand the key   
     for(int j=0; j<4*(Nr+1); j++)
         w[j] = new unsigned char[4];
-    keyExpansion();
+    keyExpansion(key);
 }
 
 /**
  * Read file and store its bytes in Blocks of 128 bits
  * Padding can be done if required
- * @param filePath - where the file is located
- * @param padding - determines if padding is required
+ * @param block - block with 128 bits partions
  */
-Block Cipher::readFile(const string filePath, bool padding){
-    ifstream input(filePath, ios::binary);
-
-    vector<unsigned char> bytes((istreambuf_iterator<char>(input)),
-         (istreambuf_iterator<char>()));
-
+void Cipher::readText(vector<unsigned char>* inpVct){
+    ifstream input(*textPath, ios::binary);
+    streampos textSize;             //Size of the file
+    input.seekg(0, ios::end);
+    textSize = input.tellg();
+    input.seekg(0, ios::beg);
+    inpVct->reserve(textSize);      //The vector will have enough space for all elements
+    inpVct->insert(inpVct->begin(), 
+        (istreambuf_iterator<char>(input)),
+        (istreambuf_iterator<char>()));
     input.close();
-    Block block(&bytes, padding);
-
-    return block;
 }
 
 /**
- * Check if the file exists
+ * Quickly check if the file exists
  * @param filePath - File's path
  */ 
-bool Cipher::fileExists (const string* filePath) {
+bool Cipher::fileExists(const string* filePath) {
   struct stat info;   
   return stat ((*filePath).c_str(), &info) == 0; 
 }
@@ -292,7 +312,7 @@ void Cipher::subWord(unsigned char* wd){
  * @param buff -> Buffer to save the key
  * @param Nk -> Key-size in words
  */
-void Cipher::generateKey(int Nk, unsigned char* buff) {
+void Cipher::generateKey(unsigned char* buff) {
     unsigned int rand[Nk], x=0;
     bool* key2 = new bool[32*Nk];
     
@@ -326,12 +346,10 @@ void Cipher::generateKey(int Nk, unsigned char* buff) {
  * @param Nr -> Number of rounds in AES Enc
  * @param w -> (Nr+1)*4 char array to store expanded key
  */
-void Cipher::keyExpansion() {
-    unsigned char /*key[4*Nk],*/ temp[4];
+void Cipher::keyExpansion(unsigned char* key) {
+    unsigned char temp[4];
     int i = 0;
-
-    // generateKey(Nk, key);
-    unsigned char key[] = {0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c};
+    //unsigned char key[] = {0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c};
     
     while(i < Nk) {
         for(int j=0; j<4; j++) w[i][j] = key[4*i+j];
@@ -373,10 +391,6 @@ void Cipher::addRoudKey(int round, unsigned char** w, unsigned char** st) {
  * @param input - input string
 */
 Sequence Cipher::encrypt(Sequence* input) {
-    w = new unsigned char*[4*(Nr+1)];
-    for(int j=0; j<4*(Nr+1); j++)
-        w[j] = new unsigned char[4];
-    keyExpansion();
     State state(input);
     cout<<"Original State:\n"<<state<<endl;
     addRoudKey(0, w, state.getStateArray());
@@ -433,7 +447,6 @@ void Cipher::invSubBytes(unsigned char** st){
  */ 
 Sequence Cipher::decrypt(Sequence* input){
     State state(input);
-    keyExpansion();
     addRoudKey(0, w, state.getStateArray());
 
     for (int i=1; i < Nr-1; i++) {
@@ -449,4 +462,13 @@ Sequence Cipher::decrypt(Sequence* input){
     invSubBytes(state.getStateArray());
     addRoudKey(Nr, w, state.getStateArray());
     return state.toSequence();
+}
+
+void Cipher::OFB(){
+    for(Sequence sq: inputBlock->getSequenceVector()){
+        for(int i =0; i< sq.getSize(); i++){
+            cout<<sq.getSequence()[i];
+        }
+        cout<<endl;
+    }
 }

@@ -22,4 +22,4 @@ unsigned char* Sequence::getSequence(){ return sq;}
 int Sequence::getSize(){ return size;}
 
 //Set sequence
-void Sequence::setSequence(unsigned char* _sq){ this->sq = _sq;}
+void Sequence::setSequence(unsigned char* sq){ this->sq = sq;}
