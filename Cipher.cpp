@@ -105,8 +105,9 @@ void Cipher::getKey(){
     unsigned char* key = new unsigned char[4*Nk];
     ifstream input(keyPath, ios::binary);
     if(input.is_open()){
-        for(int i=0; i < 4*Nk; i++)
-            input >> key[i];
+        for(int i=0; i < 4*Nk; i++){
+            key[i] = input.get(); 
+        }
     }else{
         generateKey(key);
         ofstream keyFile;
@@ -114,10 +115,11 @@ void Cipher::getKey(){
         keyFile << key;
         keyFile.close();       
     }
-    for(int i=0; i < 4*Nk; i++){
-            cout<<hex<<(int)key[i]<<" ";
-            if(i%16==15)cout<<endl;
-        }
+    // Print key     
+    // for(int i=0; i < 4*Nk; i++){
+    //     cout<<hex<<(int)key[i]<<" ";
+    //     if(i%16==15)cout<<endl;
+    // }
 
     w = new unsigned char*[4*(Nr+1)];    //Expand the key   
     for(int j=0; j<4*(Nr+1); j++)
@@ -392,10 +394,8 @@ void Cipher::addRoudKey(int round, unsigned char** w, unsigned char** st) {
 */
 Sequence Cipher::encrypt(Sequence* input) {
     State state(input);
-    cout<<"Original State:\n"<<state<<endl;
     addRoudKey(0, w, state.getStateArray());
     
-
     for (int i=1; i < Nr; i++) {
         unsigned char** s2 = new unsigned char*[4];
         subBytes(state.getStateArray());
@@ -409,6 +409,7 @@ Sequence Cipher::encrypt(Sequence* input) {
     shiftRows(state.getStateArray());
     addRoudKey(Nr, w, state.getStateArray());
     cout<<"Encrypted State:\n"<<state<<endl;
+    input->updateSequence(state.toSequence());
     return state.toSequence();
 }
 
@@ -464,10 +465,26 @@ Sequence Cipher::decrypt(Sequence* input){
     return state.toSequence();
 }
 
+/******************************************************
+                        OFB
+******************************************************/
+
 void Cipher::OFB(){
+    unsigned char ivChar[16] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07
+                               ,0x08 ,0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
+    Sequence ivSq(16);
+    ivSq.setSequence(ivChar);
+    encrypt(&ivSq);
+
+    cout<<"Encrypted Sequence:\n";
+    for(int i=0; i<ivSq.getSize(); i++){
+        cout<<hex<<(int)ivSq.getSequence()[i]<<" ";
+        if(i%4==3)cout<<endl;
+    }
+    cout<<endl;
     for(Sequence sq: inputBlock->getSequenceVector()){
         for(int i =0; i< sq.getSize(); i++){
-            cout<<sq.getSequence()[i];
+            cout<<hex<<(int)sq.getSequence()[i]<<" ";
         }
         cout<<endl;
     }

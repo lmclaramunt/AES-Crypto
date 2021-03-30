@@ -23,3 +23,11 @@ int Sequence::getSize(){ return size;}
 
 //Set sequence
 void Sequence::setSequence(unsigned char* sq){ this->sq = sq;}
+
+void Sequence::updateSequence(Sequence seq){
+    if(size == (seq).getSize()){
+        for(int i=0; i < (seq).getSize(); i++)
+            sq[i] = (seq).getSequence()[i];    
+    }else
+        throw "Sequences of different size";   
+}

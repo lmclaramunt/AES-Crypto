@@ -13,6 +13,7 @@ public:
     unsigned char* getSequence();
     void setSequence(unsigned char* sq);
     int getSize();
+    void updateSequence(Sequence seq);
 };
 
 #endif /* Sequence_hpp */
