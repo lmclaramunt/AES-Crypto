@@ -24,10 +24,34 @@ int Sequence::getSize(){ return size;}
 //Set sequence
 void Sequence::setSequence(unsigned char* sq){ this->sq = sq;}
 
+/**
+ * Values stored in a 128 bit sequence will be updated
+    @param seq - new values to be stored in Sequence
+*/
 void Sequence::updateSequence(Sequence seq){
     if(size == (seq).getSize()){
         for(int i=0; i < (seq).getSize(); i++)
             sq[i] = (seq).getSequence()[i];    
     }else
         throw "Sequences of different size";   
+}
+
+ostream& operator<<(ostream& os, Sequence& seq) {
+    for (int i=0; i < seq.getSize(); i++) 
+        os << hex <<(int)seq.getSequence()[i]<< ' ';
+    os << endl;
+    return os;
+}
+
+/**
+ * XOR two sequences
+    @param a - First sequence, result will be stored here
+    @param b - Second sequence, used for XORing
+*/
+Sequence& operator^(Sequence& a, Sequence& b) {
+    int m = min(a.getSize(), b.getSize());
+    for (int i=0; i < m; i++) {
+        a.getSequence()[i] ^= b.getSequence()[i];
+    }
+    return a;
 }

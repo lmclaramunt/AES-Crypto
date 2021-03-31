@@ -60,7 +60,7 @@ Sequence State::toSequence() const{
     Sequence sq(16);
     for(int column = 0; column < 4; column++){
         for(int row = 0; row < 4; row++){    
-            sq.getSequence()[column + 4*row] = s[row][column];
+            sq.getSequence()[row + 4*column] = s[row][column];
         }
     }
     return sq;

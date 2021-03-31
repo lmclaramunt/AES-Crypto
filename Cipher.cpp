@@ -44,22 +44,29 @@ const unsigned char Cipher::sboxInv[16][16] = {
 const unsigned char rcon[] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36};
 
 //Initialize a input and key
-Cipher::Cipher(string* _textPath, int* keyLength, bool padding): textPath(_textPath){
-    cryptoDir();
-    setBlockRoundCombinations(keyLength, true);
-    getKey();
-    vector<unsigned char> inpVct;
-    readText(&inpVct);
-    inputBlock = new Block(&inpVct, padding);
+Cipher::Cipher(string* _textPath, int* keyLength, bool padding, bool encrypt): 
+        textPath(_textPath){
+    try{
+        if(textPath->empty()) throw "Missing path to file\n";
+        cryptoDir();
+        setBlockRoundCombinations(keyLength, true);
+        getKey(encrypt);
+        vector<unsigned char> inpVct;
+        readText(&inpVct);
+        inputBlock = new Block(&inpVct, padding);
+    }catch(const char* str){
+        throw str;
+    }
 }
 
-Cipher::Cipher(string* _textPath, string* _keyPath, int* keyLength, bool padding): textPath(_textPath), keyPath(*_keyPath){
-    cryptoDir();
-    setBlockRoundCombinations(keyLength, false);
-    getKey();
-    vector<unsigned char> inpVct;
-    readText(&inpVct);
-    inputBlock = new Block(&inpVct, padding);
+/**
+ * Give a new value to the key's path
+  @param path - new path
+*/
+void Cipher::setKeyPath(string* path){ 
+    if((*path).empty())
+        throw "Key's path cannot be empty\n";
+    keyPath = *path;
 }
 
 /**
@@ -79,9 +86,9 @@ void Cipher::setBlockRoundCombinations(int* keyLength, bool setKeyPath){
     case 256:
         Nk = 8, Nr = 14;
         break;
-    default: break;
+    default: throw "Invalid Key Length -- Valid: 128, 192, 256"; break;
     }
-    if(setKeyPath) keyPath = home + "/AES-" + to_string(*keyLength) + ".aes";
+    if(setKeyPath) keyPath = home + "/.AES-" + to_string(*keyLength) + ".aes";
 }
 
 /**
@@ -100,20 +107,24 @@ void Cipher::cryptoDir(){
 /**
  * Get the either either from a file or generate a new one
     if there is no key to deal with
+    @param encrypt - bool to determine if we are 
+        encrypting or decrypting
 */
-void Cipher::getKey(){
+void Cipher::getKey(bool encrypt){
     unsigned char* key = new unsigned char[4*Nk];
     ifstream input(keyPath, ios::binary);
-    if(input.is_open()){
-        for(int i=0; i < 4*Nk; i++){
-            key[i] = input.get(); 
-        }
-    }else{
+    if(input.is_open() && encrypt){     //Read key, given path to it
+        for(int i=0; i < 4*Nk; i++)
+            key[i] = input.get();
+        input.close(); 
+    }else if(encrypt){          //Create new key if we are encrypting
         generateKey(key);
         ofstream keyFile;
-        keyFile.open(keyPath);
+        keyFile.open(keyPath, ios::binary);
         keyFile << key;
         keyFile.close();       
+    }else{
+        throw "Missing key for decryption\n";   //User should have key to decrypt
     }
     // Print key     
     // for(int i=0; i < 4*Nk; i++){
@@ -125,6 +136,7 @@ void Cipher::getKey(){
     for(int j=0; j<4*(Nr+1); j++)
         w[j] = new unsigned char[4];
     keyExpansion(key);
+    
 }
 
 /**
@@ -392,7 +404,7 @@ void Cipher::addRoudKey(int round, unsigned char** w, unsigned char** st) {
  * AES encryption routine
  * @param input - input string
 */
-Sequence Cipher::encrypt(Sequence* input) {
+void Cipher::encrypt(Sequence* input) {
     State state(input);
     addRoudKey(0, w, state.getStateArray());
     
@@ -408,9 +420,7 @@ Sequence Cipher::encrypt(Sequence* input) {
     subBytes(state.getStateArray());
     shiftRows(state.getStateArray());
     addRoudKey(Nr, w, state.getStateArray());
-    cout<<"Encrypted State:\n"<<state<<endl;
     input->updateSequence(state.toSequence());
-    return state.toSequence();
 }
 
 /******************************************************
@@ -470,22 +480,21 @@ Sequence Cipher::decrypt(Sequence* input){
 ******************************************************/
 
 void Cipher::OFB(){
-    unsigned char ivChar[16] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07
-                               ,0x08 ,0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
+    unsigned char ivChar[16] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+                                0x08 ,0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
     Sequence ivSq(16);
     ivSq.setSequence(ivChar);
-    encrypt(&ivSq);
-
-    cout<<"Encrypted Sequence:\n";
-    for(int i=0; i<ivSq.getSize(); i++){
-        cout<<hex<<(int)ivSq.getSequence()[i]<<" ";
-        if(i%4==3)cout<<endl;
-    }
-    cout<<endl;
+    
+    ofstream ciphertext;
+    ciphertext.open(*textPath, ios::binary);
     for(Sequence sq: inputBlock->getSequenceVector()){
-        for(int i =0; i< sq.getSize(); i++){
-            cout<<hex<<(int)sq.getSequence()[i]<<" ";
-        }
-        cout<<endl;
+        encrypt(&ivSq);
+        sq = sq ^ ivSq;
+        ciphertext << sq.getSequence(); 
     }
+    ciphertext.close();
+}
+
+void Cipher::CBC(){
+    
 }

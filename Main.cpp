@@ -40,16 +40,8 @@ int main(int argc, char* argv[]){
             cbc = true;
         }else if(arg == "-b" || arg == "-bits"){
             if(i+1 < argc){
-                try{
-                    stringstream ss(argv[++i]);
-                    ss >> keyLength;
-                    if(keyLength != 128 && keyLength != 192 && keyLength != 256){
-                        throw "Invalid Key Length -- Valid: 128, 192, 256";
-                    }
-                }catch(const char* str){
-                    cerr<<"Exception: "<<str<<endl;
-                    return 1;
-                }
+                stringstream ss(argv[++i]);
+                ss >> keyLength;
             }else{
                 cerr<<"-b/bits option requires key length in bits (128/192/256)"<<endl;
                 return 1;
@@ -70,38 +62,32 @@ int main(int argc, char* argv[]){
             }
         }
     }
-    if(encrypt && !filePath.empty() && (ofb || cbc)){
-        if(!keyPath.empty()){
-            Cipher cipher(&filePath, &keyPath, &keyLength, cbc);
+
+    try{
+        if(encrypt && (ofb || cbc)){
+            Cipher cipher(&filePath, &keyLength, cbc, true);
+            if(!keyPath.empty())
+                cipher.setKeyPath(&keyPath);
             if(cbc){
                 //Do CBC encryption
+            }else{
+                cipher.OFB();
+            }
+        }else if(decrypt && (ofb || cbc)){
+            Cipher cipher(&filePath, &keyLength, cbc, false);
+            if(!keyPath.empty())
+                cipher.setKeyPath(&keyPath);
+            if(cbc){
+                //Do CBC decryption
             }else{
                 cipher.OFB();
             }
         }else{
-            Cipher cipher(&filePath, &keyLength, cbc);
-            if(cbc){
-                //Do CBC encryption
-            }else{
-                cipher.OFB();
-            }
+            cerr<<"Invalid parameters. Use -h/help for assistance if needed"<<endl;
+            return 1;
         }
-    }else if(decrypt && !filePath.empty() && (ofb || cbc)){
-        if(!keyPath.empty()){
-            Cipher cipher(&filePath, &keyPath, &keyLength, cbc);
-            if(cbc){
-                //Do CBC decryption
-            }else{
-                cipher.OFB();
-            }
-        }Cipher cipher(&filePath, &keyLength, cbc);
-            if(cbc){
-                //Do CBC decryption
-            }else{
-                cipher.OFB();
-            }
-    }else{
-        cerr<<"Invalid parameters. Use -h/help for assistance if needed"<<endl;
+    }catch(const char* str){
+        cerr<<"Exception: "<<str<<endl;
         return 1;
     }
 

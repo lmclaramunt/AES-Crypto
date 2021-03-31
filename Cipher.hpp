@@ -38,15 +38,16 @@ private:
     void invSubBytes(unsigned char** st);
     void setBlockRoundCombinations(int* keyLength, bool setKeyPath);
     void cryptoDir();
-    void getKey();
+    void getKey(bool encrypt);
     bool fileExists(const string* fileName);
     void readText(vector<unsigned char>* inpVct);
+    void encrypt(Sequence* input);
 public:
-    Cipher(string* _textPath, int* keyLength, bool padding);
-    Cipher(string* _textPath, string* _keyPath, int* keyLength, bool padding);    
-    Sequence encrypt(Sequence* input);
+    Cipher(string* _textPath, int* keyLength, bool padding, bool encrypt);
+    void setKeyPath(string* path);     
     Sequence decrypt(Sequence* input); 
-    void OFB(); 
+    void OFB();
+    void CBC(); 
 };
 
 #endif /* Cipher_hpp */
