@@ -71,7 +71,7 @@ int main(int argc, char* argv[]){
             else
                 c = new Cipher(&filePath, &keyLength, cbc, true);
             if(cbc){
-                //Do CBC encryption
+                c->CBC_encrypt();
             }else{
                 c->OFB(true);
             }            

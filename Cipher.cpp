@@ -118,24 +118,19 @@ void Cipher::cryptoDir(){
 void Cipher::getKey(bool encrypt){
     unsigned char* key = new unsigned char[4*Nk];
     ifstream input(keyPath, ios::binary);
-    if(input.is_open()){     //Read key, given path to it
+    if(input.is_open()){        //Read key, given path to it
         for(int i=0; i < 4*Nk; i++)
             key[i] = input.get();
         input.close(); 
     }else if(encrypt){          //Create new key if we are encrypting
-        generateKey(key);
+        generateKey(key, Nk);
         ofstream keyFile;
         keyFile.open(keyPath, ios::binary);
-        keyFile << key;
+        keyFile.write((const char*)key, 4*Nk);
         keyFile.close();       
     }else{
         throw "Missing key for decryption\n";   //User should have key to decrypt
     }
-    // Print key     
-    // for(int i=0; i < 4*Nk; i++){
-    //     cout<<hex<<(int)key[i]<<" ";
-    //     if(i%16==15)cout<<endl;
-    // }
 
     w = new unsigned char*[4*(Nr+1)];    //Expand the key   
     for(int j=0; j<4*(Nr+1); j++)
@@ -330,25 +325,25 @@ void Cipher::subWord(unsigned char* wd){
  * @param buff -> Buffer to save the key
  * @param Nk -> Key-size in words
  */
-void Cipher::generateKey(unsigned char* buff) {
-    unsigned int rand[Nk], x=0;
-    bool* key2 = new bool[32*Nk];
+void Cipher::generateKey(unsigned char* buff, int _Nk) {
+    unsigned int rand[_Nk], x=0;
+    bool* key2 = new bool[32*_Nk];
     
     std::random_device rd("/dev/urandom");
-    std::fill_n(key2, 32*Nk, 0);
+    std::fill_n(key2, 32*_Nk, 0);
 
     /* Generate Nk 32 bits INTs */
-    for (int i=0; i<Nk; i++)
+    for (int i=0; i<_Nk; i++)
         rand[i] = rd();
 
     /* Saving the binary sequence */
     for (int i=31; i>=0; i--) {
-        for (int j=0; j<Nk; j++) {
+        for (int j=0; j<_Nk; j++) {
             if((rand[j] & 1<<i) == 1<<i)
                 key2[32*j+31-i]=1;
         }
     }
-    for(int i=0; i<4*Nk; i++) {
+    for(int i=0; i<4*_Nk; i++) {
         unsigned char ch = 0;
         for (int j=0; j<8; j++)
             if(key2[8*i+j])
@@ -406,7 +401,7 @@ void Cipher::addRoudKey(int round, unsigned char** w, unsigned char** st) {
 
 /**
  * AES encryption routine
- * @param input - input string
+ * @param input - 128 bits that will go through encryption protocol
 */
 void Cipher::encrypt(Sequence* input) {
     State state(input);
@@ -458,9 +453,9 @@ void Cipher::invSubBytes(unsigned char** st){
 
 /**
  * AES Decryption 
- * @param input - ciphertext
+ * @param input - 128 bits that will go through decryption protocol
  */ 
-Sequence Cipher::decrypt(Sequence* input){
+void Cipher::decrypt(Sequence* input){
     State state(input);
     addRoudKey(0, w, state.getStateArray());
 
@@ -476,13 +471,18 @@ Sequence Cipher::decrypt(Sequence* input){
     invShiftRows(state.getStateArray());
     invSubBytes(state.getStateArray());
     addRoudKey(Nr, w, state.getStateArray());
-    return state.toSequence();
+    input->updateSequence(state.toSequence());
 }
 
 /******************************************************
-                        OFB
+                Output Feedback Mode - OFB
 ******************************************************/
-
+/**
+ * OFB mode of operation, for encryption and decryption
+    @param encrypting - bool to determine if we are encrypting
+            or decrypting a file, and should generate or look up 
+            for IV
+*/
 void Cipher::OFB(bool encrypting){
     ofstream ciphertext;
     ciphertext.open(*textPath, ios::binary);
@@ -503,11 +503,27 @@ void Cipher::OFB(bool encrypting){
         encrypt(&ivSq);
         sq = sq ^ ivSq;
         ciphertext.write((const char*)sq.getSequence(), sq.getSize()); 
-
     }
     ciphertext.close();
 }
 
-void Cipher::CBC(){
-    
+/******************************************************
+            Cipher Block Chaining Mode - CBC
+******************************************************/
+
+void Cipher::CBC_encrypt(){
+    ofstream ciphertext;
+    ciphertext.open(*textPath, ios::binary);
+    Sequence ivSq(16); 
+    // unsigned char iv[16] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,  
+    //                         0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
+    // ivSq.setSequence(iv);
+    generateKey(ivSq.getSequence(), 4);
+    ciphertext.write((const char*)ivSq.getSequence(), ivSq.getSize());
+    for(Sequence sq: inputBlock->getSequenceVector()){  
+        ivSq = sq ^ ivSq;
+        encrypt(&ivSq);
+        ciphertext.write((const char*)sq.getSequence(), sq.getSize());
+    }
+    ciphertext.close();  
 }

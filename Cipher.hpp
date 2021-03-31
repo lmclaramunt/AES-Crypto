@@ -27,7 +27,7 @@ private:
     void RotWord(unsigned char* w);
     void Rcon(int c, unsigned char* ch);
     void subWord(unsigned char* wd);
-    void generateKey(unsigned char* buff);
+    void generateKey(unsigned char* buff, int _Nk);
     void keyExpansion(unsigned char* key);
     void addRoudKey(int round, unsigned char** w, unsigned char** st);
     void subBytes(unsigned char** st);
@@ -42,12 +42,12 @@ private:
     bool fileExists(const string* fileName);
     void readText(vector<unsigned char>* inpVct);
     void encrypt(Sequence* input);
+    void decrypt(Sequence* input);
 public:
     Cipher(string* _textPath, int* keyLength, bool padding, bool encrypt);
-    Cipher(string* _textPath, string* _keyPath, int* keyLength, bool padding, bool encrypt);     
-    Sequence decrypt(Sequence* input); 
+    Cipher(string* _textPath, string* _keyPath, int* keyLength, bool padding, bool encrypt);         
     void OFB(bool encrypting);
-    void CBC(); 
+    void CBC_encrypt(); 
 };
 
 #endif /* Cipher_hpp */
