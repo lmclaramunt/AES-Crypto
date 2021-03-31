@@ -48,25 +48,30 @@ Cipher::Cipher(string* _textPath, int* keyLength, bool padding, bool encrypt):
         textPath(_textPath){
     try{
         if(textPath->empty()) throw "Missing path to file\n";
-        cryptoDir();
-        setBlockRoundCombinations(keyLength, true);
-        getKey(encrypt);
-        vector<unsigned char> inpVct;
-        readText(&inpVct);
-        inputBlock = new Block(&inpVct, padding);
+            cryptoDir();
+            setBlockRoundCombinations(keyLength, true);
+            getKey(encrypt);
+            vector<unsigned char> inpVct;
+            readText(&inpVct);
+            inputBlock = new Block(&inpVct, padding);
     }catch(const char* str){
         throw str;
     }
 }
 
-/**
- * Give a new value to the key's path
-  @param path - new path
-*/
-void Cipher::setKeyPath(string* path){ 
-    if((*path).empty())
-        throw "Key's path cannot be empty\n";
-    keyPath = *path;
+Cipher::Cipher(string* _textPath, string* _keyPath, int* keyLength, bool padding, bool encrypt): 
+    textPath(_textPath), keyPath(*_keyPath){
+    try{
+        if(textPath->empty()) throw "Missing path to file\n";
+            cryptoDir();
+            setBlockRoundCombinations(keyLength, false);
+            getKey(encrypt);
+            vector<unsigned char> inpVct;
+            readText(&inpVct);
+            inputBlock = new Block(&inpVct, padding);
+    }catch(const char* str){
+        throw str;
+    }
 }
 
 /**
@@ -113,7 +118,7 @@ void Cipher::cryptoDir(){
 void Cipher::getKey(bool encrypt){
     unsigned char* key = new unsigned char[4*Nk];
     ifstream input(keyPath, ios::binary);
-    if(input.is_open() && encrypt){     //Read key, given path to it
+    if(input.is_open()){     //Read key, given path to it
         for(int i=0; i < 4*Nk; i++)
             key[i] = input.get();
         input.close(); 
@@ -136,7 +141,6 @@ void Cipher::getKey(bool encrypt){
     for(int j=0; j<4*(Nr+1); j++)
         w[j] = new unsigned char[4];
     keyExpansion(key);
-    
 }
 
 /**
@@ -479,18 +483,27 @@ Sequence Cipher::decrypt(Sequence* input){
                         OFB
 ******************************************************/
 
-void Cipher::OFB(){
-    unsigned char ivChar[16] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-                                0x08 ,0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
-    Sequence ivSq(16);
-    ivSq.setSequence(ivChar);
-    
+void Cipher::OFB(bool encrypting){
     ofstream ciphertext;
     ciphertext.open(*textPath, ios::binary);
+    Sequence ivSq(16);   
+    if(encrypting){     //Generate IV if we are encrypting
+        unsigned char iv[16] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,  
+                                0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
+        ivSq.setSequence(iv);
+        ciphertext.write((const char*)ivSq.getSequence(), ivSq.getSize());  //IV will be first 128-bits of ciphertext
+    }
+
     for(Sequence sq: inputBlock->getSequenceVector()){
+        if(!encrypting){
+            ivSq.updateSequence(sq);    //If we are decrypting, then update the value of IV
+            encrypting = true;          //by using first 128 bits, and decryption will continue
+            continue;                   //with the next bytes
+        }
         encrypt(&ivSq);
         sq = sq ^ ivSq;
-        ciphertext << sq.getSequence(); 
+        ciphertext.write((const char*)sq.getSequence(), sq.getSize()); 
+
     }
     ciphertext.close();
 }

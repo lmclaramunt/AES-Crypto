@@ -23,7 +23,7 @@ class Block{
     void padding(vector<unsigned char>* input);
 public:
     Block(vector<unsigned char>* input, bool pad);
-    vector<Sequence> getSequenceVector() const;
+    vector<Sequence> getSequenceVector();
     vector<unsigned char> getInput() const;
     friend ostream& operator<<(ostream& os, const Block& block);
 };

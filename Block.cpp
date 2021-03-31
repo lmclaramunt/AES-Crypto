@@ -62,7 +62,7 @@ ostream& operator<<(ostream& os, const Block& block){
 /*
  *  Getters
  */
-vector<Sequence> Block::getSequenceVector() const{
+vector<Sequence> Block::getSequenceVector(){
     return sequenceVct;
 }
 

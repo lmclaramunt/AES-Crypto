@@ -64,23 +64,26 @@ int main(int argc, char* argv[]){
     }
 
     try{
-        if(encrypt && (ofb || cbc)){
-            Cipher cipher(&filePath, &keyLength, cbc, true);
+        Cipher* c;
+        if(encrypt && !filePath.empty() && (ofb || cbc)){
             if(!keyPath.empty())
-                cipher.setKeyPath(&keyPath);
+                c = new Cipher(&filePath, &keyPath, &keyLength, cbc, true);
+            else
+                c = new Cipher(&filePath, &keyLength, cbc, true);
             if(cbc){
                 //Do CBC encryption
             }else{
-                cipher.OFB();
-            }
-        }else if(decrypt && (ofb || cbc)){
-            Cipher cipher(&filePath, &keyLength, cbc, false);
+                c->OFB(true);
+            }            
+        }else if(decrypt && !filePath.empty() && (ofb || cbc)){
             if(!keyPath.empty())
-                cipher.setKeyPath(&keyPath);
+                c = new Cipher(&filePath, &keyPath, &keyLength, cbc, false);
+            else
+                c = new Cipher(&filePath, &keyLength, cbc, false);
             if(cbc){
                 //Do CBC decryption
             }else{
-                cipher.OFB();
+                c->OFB(false);
             }
         }else{
             cerr<<"Invalid parameters. Use -h/help for assistance if needed"<<endl;

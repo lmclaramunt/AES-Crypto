@@ -44,9 +44,9 @@ private:
     void encrypt(Sequence* input);
 public:
     Cipher(string* _textPath, int* keyLength, bool padding, bool encrypt);
-    void setKeyPath(string* path);     
+    Cipher(string* _textPath, string* _keyPath, int* keyLength, bool padding, bool encrypt);     
     Sequence decrypt(Sequence* input); 
-    void OFB();
+    void OFB(bool encrypting);
     void CBC(); 
 };
 
