@@ -515,15 +515,39 @@ void Cipher::CBC_encrypt(){
     ofstream ciphertext;
     ciphertext.open(*textPath, ios::binary);
     Sequence ivSq(16); 
-    // unsigned char iv[16] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,  
-    //                         0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
-    // ivSq.setSequence(iv);
-    generateKey(ivSq.getSequence(), 4);
+    unsigned char iv[16] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,  
+                            0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
+    ivSq.setSequence(iv);
+    // generateKey(ivSq.getSequence(), 4);
     ciphertext.write((const char*)ivSq.getSequence(), ivSq.getSize());
     for(Sequence sq: inputBlock->getSequenceVector()){  
         ivSq = sq ^ ivSq;
         encrypt(&ivSq);
-        ciphertext.write((const char*)sq.getSequence(), sq.getSize());
+        ciphertext.write((const char*)ivSq.getSequence(), ivSq.getSize());
     }
     ciphertext.close();  
+}
+
+void Cipher::CBC_decrypt(){
+    // ofstream ciphertext;
+    // ciphertext.open(*textPath, ios::binary);
+    Sequence prevSq(16); 
+    int i = 0;
+    for(Sequence sq: inputBlock->getSequenceVector()){  
+        if(i == 0){
+            prevSq.updateSequence(sq);  //If we are decrypting, then update the value of IV
+            i++;                        //by using first 128 bits, and decryption will continue
+            continue;                   //with the next bytes
+        }
+        cout<<"Block #"<<i<<endl;
+        cout<<"Ciphertext:\n"<<sq<<endl;
+        cout<<"Input Block:\n"<<sq<<endl;
+        decrypt(&sq);
+        cout<<"Output Block:\n"<<sq<<endl;
+        sq = sq ^ prevSq;
+        cout<<"Plaintext:\n"<<sq<<endl;
+        // ciphertext.write((const char*)sq.getSequence(), sq.getSize());
+        i++;
+    }
+    // ciphertext.close();
 }

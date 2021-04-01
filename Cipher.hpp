@@ -48,6 +48,7 @@ public:
     Cipher(string* _textPath, string* _keyPath, int* keyLength, bool padding, bool encrypt);         
     void OFB(bool encrypting);
     void CBC_encrypt(); 
+    void CBC_decrypt();
 };
 
 #endif /* Cipher_hpp */
