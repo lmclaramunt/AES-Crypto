@@ -457,9 +457,9 @@ void Cipher::invSubBytes(unsigned char** st){
  */ 
 void Cipher::decrypt(Sequence* input){
     State state(input);
-    addRoudKey(0, w, state.getStateArray());
+    addRoudKey(Nr, w, state.getStateArray());
 
-    for (int i=1; i < Nr-1; i++) {
+    for (int i=Nr-1; i > 0; i--) {
         unsigned char** s2 = new unsigned char*[4];
         invShiftRows(state.getStateArray());
         invSubBytes(state.getStateArray());
@@ -470,7 +470,7 @@ void Cipher::decrypt(Sequence* input){
 
     invShiftRows(state.getStateArray());
     invSubBytes(state.getStateArray());
-    addRoudKey(Nr, w, state.getStateArray());
+    addRoudKey(0, w, state.getStateArray());
     input->updateSequence(state.toSequence());
 }
 
@@ -510,15 +510,20 @@ void Cipher::OFB(bool encrypting){
 /******************************************************
             Cipher Block Chaining Mode - CBC
 ******************************************************/
-
+/**
+ * Encrypt using CBC mode of operation.
+ * A random, non-secret, IV will be generated for each encryption
+ * and attached as the first 128 bits of the cyphertext.
+ * Plaintext go through a padding process for CBC encryption.
+*/
 void Cipher::CBC_encrypt(){
     ofstream ciphertext;
     ciphertext.open(*textPath, ios::binary);
     Sequence ivSq(16); 
-    unsigned char iv[16] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,  
-                            0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
-    ivSq.setSequence(iv);
-    // generateKey(ivSq.getSequence(), 4);
+    // unsigned char iv[16] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,  
+    //                         0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
+    // ivSq.setSequence(iv);
+    generateKey(ivSq.getSequence(), 4);
     ciphertext.write((const char*)ivSq.getSequence(), ivSq.getSize());
     for(Sequence sq: inputBlock->getSequenceVector()){  
         ivSq = sq ^ ivSq;
@@ -528,26 +533,75 @@ void Cipher::CBC_encrypt(){
     ciphertext.close();  
 }
 
+/**
+ * Decrypt using CBC mode of operation.
+ * IV is recovered from the first 128 bits of ciphertext
+ * Padding is removed from the recovered plaintext before 
+ * writting it back into the designated file
+*/
 void Cipher::CBC_decrypt(){
-    // ofstream ciphertext;
-    // ciphertext.open(*textPath, ios::binary);
-    Sequence prevSq(16); 
+    ofstream plaintext;
+    plaintext.open(*textPath, ios::binary);
+    Sequence prevSq(16), cipherText(16); 
     int i = 0;
-    for(Sequence sq: inputBlock->getSequenceVector()){  
+    int size =inputBlock->getSequenceVector().size();
+    for(Sequence sq: inputBlock->getSequenceVector()){         
         if(i == 0){
             prevSq.updateSequence(sq);  //If we are decrypting, then update the value of IV
             i++;                        //by using first 128 bits, and decryption will continue
             continue;                   //with the next bytes
         }
-        cout<<"Block #"<<i<<endl;
-        cout<<"Ciphertext:\n"<<sq<<endl;
-        cout<<"Input Block:\n"<<sq<<endl;
+        cipherText.updateSequence(sq);  //Keep track of ciphertext, we'll need it next round   
         decrypt(&sq);
-        cout<<"Output Block:\n"<<sq<<endl;
-        sq = sq ^ prevSq;
-        cout<<"Plaintext:\n"<<sq<<endl;
-        // ciphertext.write((const char*)sq.getSequence(), sq.getSize());
+        sq = sq ^ prevSq;               
+        prevSq.updateSequence(cipherText);  //Update previous sequence, to ciphertext values
+        if(i == size-1){
+            try{
+                removePadding(&plaintext, &inputBlock->getSequenceVector().at(i-1), &sq);  //CBC always uses padding
+            }catch(const char* str){
+                throw str;
+            }
+        }
+        else if(i < size-2){
+            plaintext.write((const char*)sq.getSequence(), sq.getSize());
+        }       
         i++;
     }
-    // ciphertext.close();
+    plaintext.close();
+}
+
+/**
+ * Remove padding before writting to plaintext. Last two 128 bits blocks
+ * could have been affected by padding, so look analyze them
+ * @param file - file where plaintext will be written
+ * @param prevPlainText - sequence of plaintext previous to the last block
+ * @param lastPlainText - last sequence of plaintext in a Block
+*/
+void Cipher::removePadding(ofstream* file, Sequence* prevPlainText, Sequence* lastPlainText){ 
+    int i = 16;      
+    bool error = false, oneFound = false;
+    while (i > 0)           //Iterate through all sequence if necessary
+    {
+        i--;
+        if((*lastPlainText).getSequence()[i] == 0x00)   
+            continue;
+        else if((*lastPlainText).getSequence()[i] == 0x01){
+            oneFound = true;
+            break;
+        }else{
+            error = true;   //Last block should have `10` before anything else
+            break;
+        }
+    }
+    if(!error){
+        if(oneFound && i==0){
+            file->write((const char*)(*prevPlainText).getSequence(), 16);   //last sequence was for padding, so ignore it
+        }else if(!oneFound && i==0){
+            file->write((const char*)(*prevPlainText).getSequence(), 15);   //ignore last sequence, and last bit of prev
+        }else{
+            file->write((const char*)(*prevPlainText).getSequence(), 16);   //write entire prev sequence
+            file->write((const char*)(*lastPlainText).getSequence(), i);    //and all bytes until `10` was found
+        }   
+    }else
+        throw "Padding error!\n";   //Error if the last block doesn't containt `10` in its last bytes
 }

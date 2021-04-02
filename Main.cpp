@@ -67,9 +67,9 @@ int main(int argc, char* argv[]){
         Cipher* c;
         if(encrypt && !filePath.empty() && (ofb || cbc)){
             if(!keyPath.empty())
-                c = new Cipher(&filePath, &keyPath, &keyLength, cbc, true);
-            else
-                c = new Cipher(&filePath, &keyLength, cbc, true);
+                c = new Cipher(&filePath, &keyPath, &keyLength, cbc, true);     //cbc bool determine if 
+            else                                                                //padding is needed
+                c = new Cipher(&filePath, &keyLength, cbc, true);               //true - since we're encrypting
             if(cbc){
                 c->CBC_encrypt();
             }else{
@@ -77,9 +77,9 @@ int main(int argc, char* argv[]){
             }            
         }else if(decrypt && !filePath.empty() && (ofb || cbc)){
             if(!keyPath.empty())
-                c = new Cipher(&filePath, &keyPath, &keyLength, cbc, false);
-            else
-                c = new Cipher(&filePath, &keyLength, cbc, false);
+                c = new Cipher(&filePath, &keyPath, &keyLength, false, false);  //both bool to false since we are
+            else                                                                //decrypting and no padding is needed
+                c = new Cipher(&filePath, &keyLength, false, false);
             if(cbc){
                 c->CBC_decrypt();
             }else{
