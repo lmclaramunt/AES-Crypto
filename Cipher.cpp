@@ -2,6 +2,7 @@
 //  AES
 #include "random"
 #include "Cipher.hpp"
+#include "time.h"
 
 //S-Box
 const unsigned char Cipher::sbox[16][16] = {
@@ -486,10 +487,15 @@ void Cipher::decrypt(Sequence* input){
 void Cipher::OFB(bool encrypting){
     ofstream ciphertext;
     ciphertext.open(*textPath, ios::binary);
-    Sequence ivSq(16);   
+    Sequence ivSq(16);
     if(encrypting){     //Generate IV if we are encrypting
-        unsigned char iv[16] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,  
-                                0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
+        time_t rawtime;
+        struct tm * timeinfo;
+        unsigned char iv[16];
+
+        time(&rawtime);
+        timeinfo = localtime(&rawtime);
+        strftime ((char *)iv, 16, "%r", timeinfo);
         ivSq.setSequence(iv);
         ciphertext.write((const char*)ivSq.getSequence(), ivSq.getSize());  //IV will be first 128-bits of ciphertext
     }
