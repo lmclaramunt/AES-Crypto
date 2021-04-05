@@ -43,7 +43,7 @@ private:
     void readText(vector<unsigned char>* inpVct);
     void encrypt(Sequence* input);
     void decrypt(Sequence* input);
-    void removePadding(ofstream* file, Sequence* prevPlainText, Sequence* lastPlainText);
+    void removePadding(Sequence* lastPlainText);
 public:
     Cipher(string* _textPath, int* keyLength, bool padding, bool encrypt);
     Cipher(string* _textPath, string* _keyPath, int* keyLength, bool padding, bool encrypt);         

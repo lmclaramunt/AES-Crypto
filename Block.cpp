@@ -26,26 +26,16 @@ Block::Block(vector<unsigned char>* input, bool pad){
 }
 
 /**
-    Make sure the input will have `10` so its a multiple of 16 (128 bits)
-    Always add `10` so we can remove them when decryptings
+    Make sure the input is a multiple of 16 (128 bits). Add required bytes for this.
+    Always add bytes to remove them properly 
+    E.g. if 3 bytes are missing add 0x030303
+         if 5 bytes are missing add 0x0505050505
     @param input - vector with input bytes
 */
 void Block::padding(vector<unsigned char>* input){
     int mod = (*input).size() % 16;
-    if(mod == 0){                     //If input is already a multiple of 16
-        input->push_back(0x01);        //Add entire block with `10`
-        for(int i=0; i<15;i++)
-            input->push_back(0x00);
-    }else if(mod == 15){              //If input is missing only one char
-        input->push_back(0x01);     //Add `1` and entire block of `0`s
-        for(int i=0; i < 16; i++)
-            input->push_back(0x00);
-    }else{
-        mod = 15 - mod;               //Add required `01`
-        input->push_back(0x01);
-        for(int i=0; i<mod;i++)
-            input->push_back(0x00);
-    }
+    for(int i=0; i<16-mod; i++)
+        input->push_back(0x10-mod);
 }
 
 //Make it easier to print Block (by sequence) in hex
@@ -59,10 +49,8 @@ ostream& operator<<(ostream& os, const Block& block){
     return os;
 }
 
-/*
- *  Getters
- */
-vector<Sequence> Block::getSequenceVector(){
+//Get reference to Block's vector 
+vector<Sequence>& Block::getSequenceVector(){
     return sequenceVct;
 }
 

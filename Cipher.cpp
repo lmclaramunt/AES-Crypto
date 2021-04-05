@@ -492,7 +492,6 @@ void Cipher::OFB(bool encrypting){
         time_t rawtime;
         struct tm * timeinfo;
         unsigned char iv[16];
-
         time(&rawtime);
         timeinfo = localtime(&rawtime);
         strftime ((char *)iv, 16, "%r", timeinfo);
@@ -546,68 +545,57 @@ void Cipher::CBC_encrypt(){
  * writting it back into the designated file
 */
 void Cipher::CBC_decrypt(){
-    ofstream plaintext;
-    plaintext.open(*textPath, ios::binary);
     Sequence prevSq(16), cipherText(16); 
-    int i = 0;
-    int size =inputBlock->getSequenceVector().size();
+    int size = inputBlock->getSequenceVector().size();
+    bool ivFound = false;
     for(Sequence sq: inputBlock->getSequenceVector()){         
-        if(i == 0){
+        if(!ivFound){
             prevSq.updateSequence(sq);  //If we are decrypting, then update the value of IV
-            i++;                        //by using first 128 bits, and decryption will continue
+            ivFound = true;             //by using first 128 bits, and decryption will continue
             continue;                   //with the next bytes
         }
         cipherText.updateSequence(sq);  //Keep track of ciphertext, we'll need it next round   
         decrypt(&sq);
         sq = sq ^ prevSq;               
         prevSq.updateSequence(cipherText);  //Update previous sequence, to ciphertext values
-        if(i == size-1){
-            try{
-                removePadding(&plaintext, &inputBlock->getSequenceVector().at(i-1), &sq);  //CBC always uses padding
-            }catch(const char* str){
-                throw str;
-            }
+    }
+    try{
+        removePadding(&inputBlock->getSequenceVector().at(size-1));     //Last block will have padding
+    }catch(const char* str){
+        throw str;
+    }
+
+    //Blocks have been decrypted, and padding removed, so write plaintext
+    ofstream plaintext;
+    plaintext.open(*textPath, ios::binary);
+    ivFound = false;
+    for(Sequence sq: inputBlock->getSequenceVector()){
+        if(!ivFound){
+            ivFound = true;     //Skip first 128 bits, since they are IV
+            continue;
         }
-        else if(i < size-2){
-            plaintext.write((const char*)sq.getSequence(), sq.getSize());
-        }       
-        i++;
+        plaintext.write((const char*)sq.getSequence(), sq.getSize());
     }
     plaintext.close();
 }
 
 /**
- * Remove padding before writting to plaintext. Last two 128 bits blocks
- * could have been affected by padding, so look analyze them
- * @param file - file where plaintext will be written
- * @param prevPlainText - sequence of plaintext previous to the last block
+ * Remove padding before writting to plaintext. Last 128 bits blocks
+ * could have been affected by padding, so look analyze them and update the
+ * Sequence size
  * @param lastPlainText - last sequence of plaintext in a Block
 */
-void Cipher::removePadding(ofstream* file, Sequence* prevPlainText, Sequence* lastPlainText){ 
-    int i = 16;      
-    bool error = false, oneFound = false;
-    while (i > 0)           //Iterate through all sequence if necessary
-    {
-        i--;
-        if((*lastPlainText).getSequence()[i] == 0x00)   
-            continue;
-        else if((*lastPlainText).getSequence()[i] == 0x01){
-            oneFound = true;
-            break;
-        }else{
-            error = true;   //Last block should have `10` before anything else
+void Cipher::removePadding(Sequence* lastPlainText){ 
+    int paddingValue = lastPlainText->getSequence()[15];    //Last byte tells how many bytes to remove      
+    bool error = false;
+    for(int i = 15; i > 16-paddingValue; i--){
+        if(lastPlainText->getSequence()[i] != paddingValue){
+            error = true;
             break;
         }
     }
     if(!error){
-        if(oneFound && i==0){
-            file->write((const char*)(*prevPlainText).getSequence(), 16);   //last sequence was for padding, so ignore it
-        }else if(!oneFound && i==0){
-            file->write((const char*)(*prevPlainText).getSequence(), 15);   //ignore last sequence, and last bit of prev
-        }else{
-            file->write((const char*)(*prevPlainText).getSequence(), 16);   //write entire prev sequence
-            file->write((const char*)(*lastPlainText).getSequence(), i);    //and all bytes until `10` was found
-        }   
+        lastPlainText->setSize(16-paddingValue);
     }else
         throw "Padding error!\n";   //Error if the last block doesn't containt `10` in its last bytes
 }

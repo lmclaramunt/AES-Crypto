@@ -16,13 +16,26 @@ Sequence::Sequence(int _size): size(_size){
 }
 
 //Get Sequence
-unsigned char* Sequence::getSequence(){ return sq;}
+unsigned char* const & Sequence::getSequence(){ return sq;}
 
 //Get size of Sequence
 int Sequence::getSize(){ return size;}
 
 //Set sequence
 void Sequence::setSequence(unsigned char* sq){ this->sq = sq;}
+
+//Set Sequence size, in bytes, and update sequence pointer 
+void Sequence::setSize(int _size){
+    if(_size > 16 || _size < 0) throw "Invalid capacity\n";
+    if(size != _size){
+        unsigned char* temp = new unsigned char[_size];
+        for(int i=0; i< _size; i++)
+            temp[i] = sq[i];
+        delete[] sq;
+        sq = temp;
+        size = _size;
+    }
+}
 
 /**
  * Values stored in a 128 bit sequence will be updated

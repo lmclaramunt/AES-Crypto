@@ -13,8 +13,9 @@ class Sequence{
     int size;
 public:
     Sequence(int _size);
-    unsigned char* getSequence();
+    unsigned char *const & getSequence();
     void setSequence(unsigned char* sq);
+    void setSize(int _size);
     int getSize();
     void updateSequence(Sequence seq);
     friend ostream& operator<<(ostream& os, Sequence& seq);
