@@ -4,55 +4,53 @@
 #include "Block.hpp"
 
 using namespace std;
-
-//Given input, initialize the vector that has sequences of 128 bits
-Block::Block(string* _input): input(_input){
-    padding();
-    for(int i = 0; i < (*_input).length(); i += 16){
-        string str_obj((*_input).substr(i, 16));        //Get the next substring of 16 char, 128 bits
-        Sequence sq;
-        for(int j = 0; j < 16; j++){
-            sq.s[j] = (unsigned) str_obj[j];        //Store char
+/**
+    Given input, initialize the vector that has sequences of 128 bits
+    @param input - vector with bytes to be partitioned into Blocks
+    @param pad - if padding is required
+*/
+Block::Block(vector<unsigned char>* input, bool pad){
+    if(pad) padding(input);
+    Sequence sq = ((*input).size() >= 16) ? Sequence(16) : Sequence((*input).size());
+    int j = 0;
+    for(int i=0; i < (*input).size(); i++){
+        sq.getSequence()[j] = (unsigned) (*input).at(i);
+        if(i%16==15){
+            sequenceVct.push_back(sq);      //Append 128 bits, and restart
+            sq = (((*input).size()-(i+1)) >= 16) ? Sequence(16) : Sequence(((*input).size()-(i+1)));
+            j=-1;
         }
-        sequenceVct.push_back(sq);                  //Store in block
+        j++;
     }
+    if(j != 0) sequenceVct.push_back(sq);       //Left over is padding was avoided
 }
 
-//Make sure the input will have `10` so its a multiple of 16 (128 bits)
-//Always add `10` so we can remove them when decryptings
-void Block::padding(){
-    int mod = (*input).length() % 16;
-    if(mod == 0){                     //If input is already a multiple of 16
-        (*input).append(1, 0x01);     //Add entire block with `10`
-        (*input).append(15, 0x00);
-    }else if(mod == 15){              //If input is missing only one char
-        (*input).append(1, 0x01);     //Add `1` and entire block of `0`s
-        (*input).append(16, 0x00);
-    }else{
-        mod = 15 - mod;               //Add required `01`
-        (*input).append(1, 0x01);
-        (*input).append(mod, 0x00);
-    }
+/**
+    Make sure the input is a multiple of 16 (128 bits). Add required bytes for this.
+    Always add bytes to remove them properly 
+    E.g. if 3 bytes are missing add 0x030303
+         if 5 bytes are missing add 0x0505050505
+    @param input - vector with input bytes
+*/
+void Block::padding(vector<unsigned char>* input){
+    int mod = (*input).size() % 16;
+    for(int i=0; i<16-mod; i++)
+        input->push_back(0x10-mod);
 }
 
 //Make it easier to print Block (by sequence) in hex
 ostream& operator<<(ostream& os, const Block& block){
     for(Sequence sq: block.sequenceVct){
-        for(int i = 0; i < 16; i++){
-            os << hex << (int)sq.s[i]<<" ";
+        for(int i = 0; i < sq.getSize(); i++){
+            os << hex << (int)sq.getSequence()[i]<<" ";
         }
         os << endl;
     }
     return os;
 }
 
-/*
- *  Getters
- */
-vector<Sequence> Block::getSequenceVector() const{
+//Get reference to Block's vector 
+vector<Sequence>& Block::getSequenceVector(){
     return sequenceVct;
 }
 
-string Block::getInput() const{
-    return *input;
-}

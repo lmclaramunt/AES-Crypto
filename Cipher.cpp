@@ -2,6 +2,7 @@
 //  AES
 #include "random"
 #include "Cipher.hpp"
+#include "time.h"
 
 //S-Box
 const unsigned char Cipher::sbox[16][16] = {
@@ -44,12 +45,126 @@ const unsigned char Cipher::sboxInv[16][16] = {
 const unsigned char rcon[] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36};
 
 //Initialize a input and key
-Cipher::Cipher(Sequence* inString, Sequence* key){
-    input = inString;
-    key = key;
+Cipher::Cipher(string* _textPath, int* keyLength, bool padding, bool encrypt): 
+        textPath(_textPath){
+    try{
+        if(textPath->empty()) throw "Missing path to file\n";
+            cryptoDir();
+            setBlockRoundCombinations(keyLength, true);
+            getKey(encrypt);
+            vector<unsigned char> inpVct;
+            readText(&inpVct);
+            inputBlock = new Block(&inpVct, padding);
+    }catch(const char* str){
+        throw str;
+    }
 }
 
-Cipher::Cipher(){}
+Cipher::Cipher(string* _textPath, string* _keyPath, int* keyLength, bool padding, bool encrypt): 
+    textPath(_textPath), keyPath(*_keyPath){
+    try{
+        if(textPath->empty()) throw "Missing path to file\n";
+            cryptoDir();
+            setBlockRoundCombinations(keyLength, false);
+            getKey(encrypt);
+            vector<unsigned char> inpVct;
+            readText(&inpVct);
+            inputBlock = new Block(&inpVct, padding);
+    }catch(const char* str){
+        throw str;
+    }
+}
+
+/**
+ Set number of rounds performed during AES execution according
+ to key's length
+ @param keyLength - length in bits (128/192/256)   
+ */
+void Cipher::setBlockRoundCombinations(int* keyLength, bool setKeyPath){
+    switch (*keyLength)
+    {
+    case 128:
+        Nk = 4, Nr = 10;
+        break;
+    case 192:
+        Nk = 6, Nr = 12;
+        break;
+    case 256:
+        Nk = 8, Nr = 14;
+        break;
+    default: throw "Invalid Key Length -- Valid: 128, 192, 256"; break;
+    }
+    if(setKeyPath) keyPath = home + "/.AES-" + to_string(*keyLength) + ".aes";
+}
+
+/**
+ * Create directory where keys will be stored,
+ * if it doesn't exists
+ */
+void Cipher::cryptoDir(){
+    struct stat info;
+    home = getenv("HOME");
+    home += "/.crypto";
+    const char *pathname = &home[0];
+    if(stat(pathname, &info) != 0){
+        mkdir(pathname, 0600);
+    }
+}
+/**
+ * Get the either either from a file or generate a new one
+    if there is no key to deal with
+    @param encrypt - bool to determine if we are 
+        encrypting or decrypting
+*/
+void Cipher::getKey(bool encrypt){
+    unsigned char* key = new unsigned char[4*Nk];
+    ifstream input(keyPath, ios::binary);
+    if(input.is_open()){        //Read key, given path to it
+        for(int i=0; i < 4*Nk; i++)
+            key[i] = input.get();
+        input.close(); 
+    }else if(encrypt){          //Create new key if we are encrypting
+        generateKey(key, Nk);
+        ofstream keyFile;
+        keyFile.open(keyPath, ios::binary);
+        keyFile.write((const char*)key, 4*Nk);
+        keyFile.close();       
+    }else{
+        throw "Missing key for decryption\n";   //User should have key to decrypt
+    }
+
+    w = new unsigned char*[4*(Nr+1)];    //Expand the key   
+    for(int j=0; j<4*(Nr+1); j++)
+        w[j] = new unsigned char[4];
+    keyExpansion(key);
+}
+
+/**
+ * Read file and store its bytes in Blocks of 128 bits
+ * Padding can be done if required
+ * @param block - block with 128 bits partions
+ */
+void Cipher::readText(vector<unsigned char>* inpVct){
+    ifstream input(*textPath, ios::binary);
+    streampos textSize;             //Size of the file
+    input.seekg(0, ios::end);
+    textSize = input.tellg();
+    input.seekg(0, ios::beg);
+    inpVct->reserve(textSize);      //The vector will have enough space for all elements
+    inpVct->insert(inpVct->begin(), 
+        (istreambuf_iterator<char>(input)),
+        (istreambuf_iterator<char>()));
+    input.close();
+}
+
+/**
+ * Quickly check if the file exists
+ * @param filePath - File's path
+ */ 
+bool Cipher::fileExists(const string* filePath) {
+  struct stat info;   
+  return stat ((*filePath).c_str(), &info) == 0; 
+}
 
 /**
  Substitute each byte in the State using S-Box
@@ -115,7 +230,7 @@ void Cipher::shiftColumnsByTwo(unsigned char** st, int* row){
 // method to find xtime()
 unsigned char Cipher::xTime(unsigned char stateVal) {
     // cout<<hex<<(int)stateVal<<" ";
-    if ((int)stateVal <= 128) {
+    if (stateVal < 0x80) {
         return stateVal<<1;
     }
     return (stateVal<<1)^0x1b;
@@ -211,25 +326,25 @@ void Cipher::subWord(unsigned char* wd){
  * @param buff -> Buffer to save the key
  * @param Nk -> Key-size in words
  */
-void Cipher::generateKey(int Nk, unsigned char* buff) {
-    unsigned int rand[Nk], x=0;
-    bool* key2 = new bool[32*Nk];
+void Cipher::generateKey(unsigned char* buff, int _Nk) {
+    unsigned int rand[_Nk], x=0;
+    bool* key2 = new bool[32*_Nk];
     
     std::random_device rd("/dev/urandom");
-    std::fill_n(key2, 32*Nk, 0);
+    std::fill_n(key2, 32*_Nk, 0);
 
     /* Generate Nk 32 bits INTs */
-    for (int i=0; i<Nk; i++)
+    for (int i=0; i<_Nk; i++)
         rand[i] = rd();
 
     /* Saving the binary sequence */
     for (int i=31; i>=0; i--) {
-        for (int j=0; j<Nk; j++) {
+        for (int j=0; j<_Nk; j++) {
             if((rand[j] & 1<<i) == 1<<i)
                 key2[32*j+31-i]=1;
         }
     }
-    for(int i=0; i<4*Nk; i++) {
+    for(int i=0; i<4*_Nk; i++) {
         unsigned char ch = 0;
         for (int j=0; j<8; j++)
             if(key2[8*i+j])
@@ -245,11 +360,10 @@ void Cipher::generateKey(int Nk, unsigned char* buff) {
  * @param Nr -> Number of rounds in AES Enc
  * @param w -> (Nr+1)*4 char array to store expanded key
  */
-void Cipher::keyExpansion(int Nk, int Nr, unsigned char** w) {
-    unsigned char key[4*Nk], temp[4];
+void Cipher::keyExpansion(unsigned char* key) {
+    unsigned char temp[4];
     int i = 0;
-
-    generateKey(Nk, key);
+    //unsigned char key[] = {0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c};
     
     while(i < Nk) {
         for(int j=0; j<4; j++) w[i][j] = key[4*i+j];
@@ -288,20 +402,13 @@ void Cipher::addRoudKey(int round, unsigned char** w, unsigned char** st) {
 
 /**
  * AES encryption routine
- * @param input - input string
+ * @param input - 128 bits that will go through encryption protocol
 */
-Sequence Cipher::encrypt(Sequence* input) {
-    int Nr = 14, Nk = 8;
-    unsigned char** w;
-    w = new unsigned char*[4*(Nr+1)];
-    for(int j=0; j<4*(Nr+1); j++)
-        w[j] = new unsigned char[4];
-    
+void Cipher::encrypt(Sequence* input) {
     State state(input);
-    keyExpansion(Nk, Nr, w);
     addRoudKey(0, w, state.getStateArray());
-
-    for (int i=1; i < Nr-1; i++) {
+    
+    for (int i=1; i < Nr; i++) {
         unsigned char** s2 = new unsigned char*[4];
         subBytes(state.getStateArray());
         shiftRows(state.getStateArray());
@@ -312,8 +419,8 @@ Sequence Cipher::encrypt(Sequence* input) {
 
     subBytes(state.getStateArray());
     shiftRows(state.getStateArray());
-    addRoudKey(Nr-1, w, state.getStateArray());
-    return state.toSequence();
+    addRoudKey(Nr, w, state.getStateArray());
+    input->updateSequence(state.toSequence());
 }
 
 /******************************************************
@@ -347,20 +454,13 @@ void Cipher::invSubBytes(unsigned char** st){
 
 /**
  * AES Decryption 
- * @param input - ciphertext
+ * @param input - 128 bits that will go through decryption protocol
  */ 
-Sequence Cipher::decrypt(Sequence* input){
-int Nr = 14, Nk = 8;
-    unsigned char** w;
-    w = new unsigned char*[4*(Nr+1)];
-    for(int j=0; j<4*(Nr+1); j++)
-        w[j] = new unsigned char[4];
-    
+void Cipher::decrypt(Sequence* input){
     State state(input);
-    keyExpansion(Nk, Nr, w);
-    addRoudKey(0, w, state.getStateArray());
+    addRoudKey(Nr, w, state.getStateArray());
 
-    for (int i=1; i < Nr-1; i++) {
+    for (int i=Nr-1; i > 0; i--) {
         unsigned char** s2 = new unsigned char*[4];
         invShiftRows(state.getStateArray());
         invSubBytes(state.getStateArray());
@@ -371,6 +471,131 @@ int Nr = 14, Nk = 8;
 
     invShiftRows(state.getStateArray());
     invSubBytes(state.getStateArray());
-    addRoudKey(Nr-1, w, state.getStateArray());
-    return state.toSequence();
+    addRoudKey(0, w, state.getStateArray());
+    input->updateSequence(state.toSequence());
+}
+
+/******************************************************
+                Output Feedback Mode - OFB
+******************************************************/
+/**
+ * OFB mode of operation, for encryption and decryption
+    @param encrypting - bool to determine if we are encrypting
+            or decrypting a file, and should generate or look up 
+            for IV
+*/
+void Cipher::OFB(bool encrypting){
+    ofstream ciphertext;
+    ciphertext.open(*textPath, ios::binary);
+    Sequence ivSq(16);
+    if(encrypting){     //Generate IV if we are encrypting
+        time_t rawtime;
+        struct tm * timeinfo;
+        unsigned char iv[16];
+        time(&rawtime);
+        timeinfo = localtime(&rawtime);
+        strftime ((char *)iv, 16, "%r", timeinfo);
+        ivSq.setSequence(iv);
+        ciphertext.write((const char*)ivSq.getSequence(), ivSq.getSize());  //IV will be first 128-bits of ciphertext
+    }
+
+    for(Sequence sq: inputBlock->getSequenceVector()){
+        if(!encrypting){
+            ivSq.updateSequence(sq);    //If we are decrypting, then update the value of IV
+            encrypting = true;          //by using first 128 bits, and decryption will continue
+            continue;                   //with the next bytes
+        }
+        encrypt(&ivSq);
+        sq = sq ^ ivSq;
+        ciphertext.write((const char*)sq.getSequence(), sq.getSize()); 
+    }
+    ciphertext.close();
+}
+
+/******************************************************
+            Cipher Block Chaining Mode - CBC
+******************************************************/
+/**
+ * Encrypt using CBC mode of operation.
+ * A random, non-secret, IV will be generated for each encryption
+ * and attached as the first 128 bits of the cyphertext.
+ * Plaintext go through a padding process for CBC encryption.
+*/
+void Cipher::CBC_encrypt(){
+    ofstream ciphertext;
+    ciphertext.open(*textPath, ios::binary);
+    Sequence ivSq(16); 
+    // unsigned char iv[16] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,  
+    //                         0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
+    // ivSq.setSequence(iv);
+    generateKey(ivSq.getSequence(), 4);
+    ciphertext.write((const char*)ivSq.getSequence(), ivSq.getSize());
+    for(Sequence sq: inputBlock->getSequenceVector()){  
+        ivSq = sq ^ ivSq;
+        encrypt(&ivSq);
+        ciphertext.write((const char*)ivSq.getSequence(), ivSq.getSize());
+    }
+    ciphertext.close();  
+}
+
+/**
+ * Decrypt using CBC mode of operation.
+ * IV is recovered from the first 128 bits of ciphertext
+ * Padding is removed from the recovered plaintext before 
+ * writting it back into the designated file
+*/
+void Cipher::CBC_decrypt(){
+    Sequence prevSq(16), cipherText(16); 
+    int size = inputBlock->getSequenceVector().size();
+    bool ivFound = false;
+    for(Sequence sq: inputBlock->getSequenceVector()){         
+        if(!ivFound){
+            prevSq.updateSequence(sq);  //If we are decrypting, then update the value of IV
+            ivFound = true;             //by using first 128 bits, and decryption will continue
+            continue;                   //with the next bytes
+        }
+        cipherText.updateSequence(sq);  //Keep track of ciphertext, we'll need it next round   
+        decrypt(&sq);
+        sq = sq ^ prevSq;               
+        prevSq.updateSequence(cipherText);  //Update previous sequence, to ciphertext values
+    }
+    try{
+        removePadding(&inputBlock->getSequenceVector().at(size-1));     //Last block will have padding
+    }catch(const char* str){
+        throw str;
+    }
+
+    //Blocks have been decrypted, and padding removed, so write plaintext
+    ofstream plaintext;
+    plaintext.open(*textPath, ios::binary);
+    ivFound = false;
+    for(Sequence sq: inputBlock->getSequenceVector()){
+        if(!ivFound){
+            ivFound = true;     //Skip first 128 bits, since they are IV
+            continue;
+        }
+        plaintext.write((const char*)sq.getSequence(), sq.getSize());
+    }
+    plaintext.close();
+}
+
+/**
+ * Remove padding before writting to plaintext. Last 128 bits blocks
+ * could have been affected by padding, so look analyze them and update the
+ * Sequence size
+ * @param lastPlainText - last sequence of plaintext in a Block
+*/
+void Cipher::removePadding(Sequence* lastPlainText){ 
+    int paddingValue = lastPlainText->getSequence()[15];    //Last byte tells how many bytes to remove      
+    bool error = false;
+    for(int i = 15; i > 16-paddingValue; i--){
+        if(lastPlainText->getSequence()[i] != paddingValue){
+            error = true;
+            break;
+        }
+    }
+    if(!error){
+        lastPlainText->setSize(16-paddingValue);
+    }else
+        throw "Padding error!\n";   //Error if the last block doesn't containt `10` in its last bytes
 }

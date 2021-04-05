@@ -4,3 +4,6 @@
 # exclude exe and out files
 *.exe
 *.out
+*.txt
+*.jpg
+Main
