@@ -1,8 +1,11 @@
 #include <cstring>
 #include <sstream>
-#include "Block.cpp"
-#include "State.cpp"
-#include "Cipher.cpp"
+#include <iostream>
+// #include "Sequence.cpp"
+// #include "Block.cpp"
+// #include "State.cpp"
+// #include "Cipher.cpp"
+#include "Cipher.hpp"
 
 using namespace std;
 

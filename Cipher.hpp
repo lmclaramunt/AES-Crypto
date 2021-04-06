@@ -10,6 +10,7 @@
 #include <fstream>
 #include <iterator>
 #include "State.hpp"
+#include "Block.hpp"
 
 class Cipher{
     const static unsigned char sbox[16][16];        //These are private

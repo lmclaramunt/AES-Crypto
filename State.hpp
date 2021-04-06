@@ -6,7 +6,6 @@
 
 #include <stdio.h>
 #include "Sequence.hpp"
-#include "Block.hpp"
 
 class State{
     unsigned char** s;

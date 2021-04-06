@@ -5,7 +5,7 @@
 
 #include <stdio.h>
 #include <algorithm>
-#include "Block.hpp"
+#include <ostream>
 using namespace std;
 
 class Sequence{

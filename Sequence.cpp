@@ -2,7 +2,6 @@
 // AES
 
 #include "Sequence.hpp"
-using namespace std;
 
 /**
  * Sequence can be a max of 128 bits, but they can hold less

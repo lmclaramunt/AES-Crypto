@@ -9,13 +9,8 @@
 #include <vector>
 #include <string>
 #include <iostream>
-#include "Sequence.cpp"
+#include "Sequence.hpp"
 using namespace std;
-
-// //Sequence of 128 bits
-// struct Sequence{
-//     unsigned char s[16];
-// };
 
 //Block containing a vector Sequence
 class Block{
