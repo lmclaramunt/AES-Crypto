@@ -47,7 +47,7 @@ private:
     void encrypt(Sequence* input, unsigned char** key);
     void decrypt(Sequence* input, unsigned char** key);
     void removePadding(Sequence* lastPlainText);
-    Sequence CBC_MAC(Block block, bool encrypting);
+    Sequence CBC_MAC(Block block, bool encrypting, bool padding);
     void getMessageLength(unsigned char** s, bool encrypting, bool padding);
     bool authenticateSequences(Sequence* first, Sequence* second);
 public:
