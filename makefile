@@ -1,5 +1,5 @@
 CC = g++
-CFLAGS = -Wall -g
+CFLAGS = -Wall -g -w
 RM = rm -f
 OBJS=$(subst .cc,.o,$(SRCS))
 default: AES

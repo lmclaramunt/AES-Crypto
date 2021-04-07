@@ -1,11 +1,11 @@
 #include <cstring>
 #include <sstream>
 #include <iostream>
-// #include "Sequence.cpp"
-// #include "Block.cpp"
-// #include "State.cpp"
-// #include "Cipher.cpp"
-#include "Cipher.hpp"
+#include "Sequence.cpp"
+#include "Block.cpp"
+#include "State.cpp"
+#include "Cipher.cpp"
+// #include "Cipher.hpp"
 
 using namespace std;
 
@@ -25,7 +25,7 @@ int main(int argc, char* argv[]){
         return 1;
     }
 
-    string filePath = "", keyPath = "";
+    string filePath = "", aesKeyPath = "", macKeyPath = "";
     int keyLength = 0;
     bool encrypt = false, decrypt = false, ofb = false, cbc = false;
     for(int i = 1; i < argc; i++){
@@ -49,11 +49,18 @@ int main(int argc, char* argv[]){
                 cerr<<"-b/bits option requires key length in bits (128/192/256)"<<endl;
                 return 1;
             }
-        }else if(arg == "-k" || arg == "-key"){
+        }else if(arg == "-aes"){
             if(i+1 < argc){
-                keyPath = argv[++i];
+                aesKeyPath = argv[++i];
             }else{
-                cerr<<"-k/key option requires a path to key"<<endl;
+                cerr<<"-aes option requires the path to the AES key"<<endl;
+                return 1;
+            }
+        }else if(arg == "-mac"){
+            if(i+1 < argc){
+                macKeyPath = argv[++i];
+            }else{
+                cerr<<"-mac option requires the path to the MAC key"<<endl;
                 return 1;
             }
         }else if(arg == "-p" || arg == "-path"){
@@ -69,19 +76,19 @@ int main(int argc, char* argv[]){
     try{
         Cipher* c;
         if(encrypt && !filePath.empty() && (ofb || cbc)){
-            if(!keyPath.empty())
-                c = new Cipher(&filePath, &keyPath, &keyLength, cbc, true);     //cbc bool determine if 
-            else                                                                //padding is needed
-                c = new Cipher(&filePath, &keyLength, cbc, true);               //true - since we're encrypting
+            if(!aesKeyPath.empty() && !macKeyPath.empty())
+                c = new Cipher(&filePath, &aesKeyPath, &macKeyPath, cbc, true);     //cbc bool determine if 
+            else                                                                                //padding is needed
+                c = new Cipher(&filePath, &keyLength, cbc, true);                               //true - since we're encrypting
             if(cbc){
                 c->CBC_encrypt();
             }else{
                 c->OFB(true);
             }            
         }else if(decrypt && !filePath.empty() && (ofb || cbc)){
-            if(!keyPath.empty())
-                c = new Cipher(&filePath, &keyPath, &keyLength, false, false);  //both bool to false since we are
-            else                                                                //decrypting and no padding is needed
+            if(!aesKeyPath.empty() && !macKeyPath.empty())
+                c = new Cipher(&filePath, &aesKeyPath, &macKeyPath, false, false);  //both bool to false since we are
+            else                                                                                //decrypting and no padding is needed
                 c = new Cipher(&filePath, &keyLength, false, false);
             if(cbc){
                 c->CBC_decrypt();
