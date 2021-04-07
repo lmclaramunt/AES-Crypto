@@ -19,6 +19,12 @@ State::State(Sequence* sq): s(new unsigned char*[4]){
     }
 }
 
+State::~State() {
+    for (int i=0; i < 4; i++) 
+        for (int j=0; j < 4; j++) s[i][j] = 0;
+    delete s;
+}
+
 /*
  * Function to print hex value of each char in the state
  * (Over-ridden function)
@@ -52,13 +58,13 @@ State& operator^(State& a, State& b) {
  * Get state array
  * Return: state reference pointer
  */
-unsigned char** State::getStateArray() const{
+unsigned char** State::getStateArray() const {
     return s;
 }
 
-Sequence State::toSequence() const{
+Sequence State::toSequence() const {
     Sequence sq(16);
-    for(int column = 0; column < 4; column++){
+    for(int column = 0; column < 4; column++) {
         for(int row = 0; row < 4; row++){    
             sq.getSequence()[row + 4*column] = s[row][column];
         }
@@ -67,7 +73,7 @@ Sequence State::toSequence() const{
 }
 
 /*
- *  Setters
+ *  Setter
  */
 void State::setStateArray(unsigned char** newS){
     s = newS;

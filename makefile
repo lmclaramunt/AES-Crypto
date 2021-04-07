@@ -1,7 +1,7 @@
 CC = g++
-CFLAGS = -Wall -g
+CFLAGS = -Wall -g -w
 RM = rm -f
-OBJS=$(subst .cc,.o,$(SRCS))
+OBJS = $(subst .cc,.o,$(SRCS))
 default: AES
 
 AES: Main.o Sequence.o Block.o State.o Cipher.o

@@ -13,14 +13,16 @@
 using namespace std;
 
 //Block containing a vector Sequence
-class Block{
-    vector<Sequence> sequenceVct;
-    void padding(vector<unsigned char>* input);
-public:
-    Block(vector<unsigned char>* input, bool pad);
-    vector<Sequence>& getSequenceVector();
-    vector<unsigned char> getInput() const;
-    friend ostream& operator<<(ostream& os, const Block& block);
+class Block {
+    private:
+        vector<Sequence> sequenceVct;
+        void padding(vector<unsigned char>* input);
+    public:
+        Block(vector<unsigned char>* input, bool pad);
+        ~Block();
+        vector<Sequence>& getSequenceVector();
+        vector<unsigned char> getInput() const;
+        friend ostream& operator<<(ostream& os, const Block& block);
 };
 
 #endif /* Block_hpp */

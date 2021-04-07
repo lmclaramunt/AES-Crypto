@@ -46,8 +46,8 @@ const unsigned char rcon[] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x
 
 //Initialize a input and key
 Cipher::Cipher(string* _textPath, int* keyLength, bool padding, bool encrypt): 
-        textPath(_textPath){
-    try{
+        textPath(_textPath) {
+    try {
         if(textPath->empty()) throw "Missing path to file\n";
             cryptoDir();
             setBlockRoundCombinations(keyLength, true);
@@ -55,14 +55,14 @@ Cipher::Cipher(string* _textPath, int* keyLength, bool padding, bool encrypt):
             vector<unsigned char> inpVct;
             readText(&inpVct);
             inputBlock = new Block(&inpVct, padding);
-    }catch(const char* str){
+    } catch(const char* str) {
         throw str;
     }
 }
 
 Cipher::Cipher(string* _textPath, string* _keyPath, int* keyLength, bool padding, bool encrypt): 
-    textPath(_textPath), keyPath(*_keyPath){
-    try{
+    textPath(_textPath), keyPath(*_keyPath) {
+    try {
         if(textPath->empty()) throw "Missing path to file\n";
             cryptoDir();
             setBlockRoundCombinations(keyLength, false);
@@ -70,19 +70,27 @@ Cipher::Cipher(string* _textPath, string* _keyPath, int* keyLength, bool padding
             vector<unsigned char> inpVct;
             readText(&inpVct);
             inputBlock = new Block(&inpVct, padding);
-    }catch(const char* str){
+    } catch(const char* str) {
         throw str;
     }
 }
 
-/**
- Set number of rounds performed during AES execution according
- to key's length
- @param keyLength - length in bits (128/192/256)   
+Cipher::~Cipher() {
+    inputBlock->~Block();
+    for(int j=0; j<4*(Nr+1); j++) {
+        std::fill_n(w[j], 4, 0);
+        delete[] w[j];
+    }
+    delete[] w;
+}
+
+/*
+ * Set number of rounds performed during AES execution according
+ * to key's length
+ * @param keyLength - length in bits (128/192/256)   
  */
-void Cipher::setBlockRoundCombinations(int* keyLength, bool setKeyPath){
-    switch (*keyLength)
-    {
+void Cipher::setBlockRoundCombinations(int* keyLength, bool setKeyPath) {
+    switch (*keyLength) {
     case 128:
         Nk = 4, Nr = 10;
         break;
@@ -92,7 +100,9 @@ void Cipher::setBlockRoundCombinations(int* keyLength, bool setKeyPath){
     case 256:
         Nk = 8, Nr = 14;
         break;
-    default: throw "Invalid Key Length -- Valid: 128, 192, 256"; break;
+    default: 
+        throw "Invalid Key Length -- Valid: 128, 192, 256"; 
+        break;
     }
     if(setKeyPath) keyPath = home + "/.AES-" + to_string(*keyLength) + ".aes";
 }
@@ -101,35 +111,35 @@ void Cipher::setBlockRoundCombinations(int* keyLength, bool setKeyPath){
  * Create directory where keys will be stored,
  * if it doesn't exists
  */
-void Cipher::cryptoDir(){
+void Cipher::cryptoDir() {
     struct stat info;
     home = getenv("HOME");
     home += "/.crypto";
     const char *pathname = &home[0];
-    if(stat(pathname, &info) != 0){
+    if(stat(pathname, &info) != 0) {
         mkdir(pathname, 0600);
     }
 }
-/**
+/*
  * Get the either either from a file or generate a new one
-    if there is no key to deal with
-    @param encrypt - bool to determine if we are 
-        encrypting or decrypting
-*/
-void Cipher::getKey(bool encrypt){
+ * if there is no key to deal with
+ * @param encrypt - bool to determine if we are 
+ * encrypting or decrypting
+ */
+void Cipher::getKey(bool encrypt) {
     unsigned char* key = new unsigned char[4*Nk];
     ifstream input(keyPath, ios::binary);
-    if(input.is_open()){        //Read key, given path to it
+    if(input.is_open()) {        //Read key, given path to it
         for(int i=0; i < 4*Nk; i++)
             key[i] = input.get();
         input.close(); 
-    }else if(encrypt){          //Create new key if we are encrypting
+    } else if(encrypt) {          //Create new key if we are encrypting
         generateKey(key, Nk);
         ofstream keyFile;
         keyFile.open(keyPath, ios::binary);
         keyFile.write((const char*)key, 4*Nk);
         keyFile.close();       
-    }else{
+    } else {
         throw "Missing key for decryption\n";   //User should have key to decrypt
     }
 
@@ -139,12 +149,12 @@ void Cipher::getKey(bool encrypt){
     keyExpansion(key);
 }
 
-/**
+/*
  * Read file and store its bytes in Blocks of 128 bits
  * Padding can be done if required
  * @param block - block with 128 bits partions
  */
-void Cipher::readText(vector<unsigned char>* inpVct){
+void Cipher::readText(vector<unsigned char>* inpVct) {
     ifstream input(*textPath, ios::binary);
     streampos textSize;             //Size of the file
     input.seekg(0, ios::end);
@@ -157,7 +167,7 @@ void Cipher::readText(vector<unsigned char>* inpVct){
     input.close();
 }
 
-/**
+/*
  * Quickly check if the file exists
  * @param filePath - File's path
  */ 
@@ -170,40 +180,40 @@ bool Cipher::fileExists(const string* filePath) {
  Substitute each byte in the State using S-Box
  @param st - 2D 4x4 State array that will be modified
  */
-void Cipher::subBytes(unsigned char** st){
+void Cipher::subBytes(unsigned char** st) {
     for(int row = 0; row < 4; row++)
         subWord(st[row]);
 }
 
-/**
- Shift the columns within the State's row by the row number
- Lowest positions in the row are swaped into highest positions,
- while highest positions change to lower positions
- @param st - State whose rows will be shifted
+/*
+ * Shift the columns within the State's row by the row number
+ * Lowest positions in the row are swaped into highest positions,
+ * while highest positions change to lower positions
+ * @param st - State whose rows will be shifted
  */
-void Cipher::shiftRows(unsigned char** st){
+void Cipher::shiftRows(unsigned char** st) {
     int row = 1;
     shiftColumnsByOne(st, &row, true);
     shiftColumnsByTwo(st, &(++row));
     shiftColumnsByOne(st, &(++row), false);   //Shift to the right by 1 is equivalent to shift to the left by 3
 }
 
-/**
- Shift Columns in a State by one to either the left or right direction
- @param st - 2D State array that will be modified
- @param row - row within the State that will be modified
- @param leftDir - if true shift in left direction, else in right direction
+/*
+ * Shift Columns in a State by one to either the left or right direction
+ * @param st - 2D State array that will be modified
+ * @param row - row within the State that will be modified
+ * @param leftDir - if true shift in left direction, else in right direction
  */
-void Cipher::shiftColumnsByOne(unsigned char** st, int* row, bool leftDir){
-    if(leftDir){
-        for(int column = 0; column < 3; column++){
+void Cipher::shiftColumnsByOne(unsigned char** st, int* row, bool leftDir) {
+    if(leftDir) {
+        for(int column = 0; column < 3; column++) {
             unsigned char temp = st[*row][column];
             int next = (column + 1) % 4;
             st[*row][column] = st[*row][next];
             st[*row][next] = temp;
         }
-    }else{
-        for(int column = 3; column > 0; column--){
+    } else {
+        for(int column = 3; column > 0; column--) {
             unsigned char temp = st[*row][column];
             int next = (column + 1) % 4;
             st[*row][column] = st[*row][next];
@@ -212,15 +222,15 @@ void Cipher::shiftColumnsByOne(unsigned char** st, int* row, bool leftDir){
     }
 }
 
-/**
- Shift Columns in a State by two
-    st[0] <--> st[2]
-    st[1] <--> st[3]
- @param st - 2D 4x4 State array that will be modified
- @param row - row within the State that will be modified
+/*
+ * Shift Columns in a State by two
+ *   st[0] <--> st[2]
+ *   st[1] <--> st[3]
+ * @param st - 2D 4x4 State array that will be modified
+ * @param row - row within the State that will be modified
  */
-void Cipher::shiftColumnsByTwo(unsigned char** st, int* row){
-    for(int column = 0; column < 2; column++){
+void Cipher::shiftColumnsByTwo(unsigned char** st, int* row) {
+    for(int column = 0; column < 2; column++) {
         unsigned char temp = st[*row][column];
         st[*row][column] = st[*row][column+2];
         st[*row][column+2] = temp;
@@ -237,7 +247,7 @@ unsigned char Cipher::xTime(unsigned char stateVal) {
 }
 
 // method to find the value of the mix column state
-unsigned char Cipher::gFMultiply(unsigned char matrixValue, unsigned char stateVal){
+unsigned char Cipher::gFMultiply(unsigned char matrixValue, unsigned char stateVal) {
     unsigned char mul = 0x00;
     if (matrixValue%0x02) {
         mul = stateVal;
@@ -272,7 +282,7 @@ void Cipher::mixColumns(unsigned char** st, unsigned char** s2){
 }
 
 // function to inverse mix columns of the state
-void Cipher::invMixColumns(unsigned char** st, unsigned char** s2){
+void Cipher::invMixColumns(unsigned char** st, unsigned char** s2) {
     unsigned char matrixValues[4] = {0x0e, 0x0b, 0x0d, 0x09};
     for (int i=0; i < 4; i++) {
         for (unsigned int j=0; j < 4; j++) {
@@ -288,7 +298,7 @@ void Cipher::invMixColumns(unsigned char** st, unsigned char** s2){
     }
 }
 
-/**
+/*
  * Rotate the word left by 1 Byte and save
  * @param w -> 4 Bytes word
  */
@@ -298,7 +308,7 @@ void Cipher::RotWord(unsigned char* w) {
     w[3] = tmp;
 }
 
-/**
+/*
  * Generate round constant word
  * @param c -> Round contanst for Cth round
  * @param buff -> Save the rcon as a word
@@ -308,19 +318,19 @@ void Cipher::Rcon(int c, unsigned char* buff) {
     buff[1] = buff[2] = buff[3] = 0;
 }
 
-/**
-   Takes four-byte input word and applies the S-box to 
-   each byte independently
-   @param wd - four byte word
+/*
+ * Takes four-byte input word and applies the S-box to 
+ * each byte independently
+ * @param wd - four byte word
  */
-void Cipher::subWord(unsigned char* wd){
+void Cipher::subWord(unsigned char* wd) {
     for(int i = 0; i < 4; i++){
         int k = (int)wd[i];
         wd[i] = sbox[k/16][k%16];
     }
 }
 
-/**
+/*
  * Generate Nk random Integers (32 bits) and
  * save them as character
  * @param buff -> Buffer to save the key
@@ -351,9 +361,14 @@ void Cipher::generateKey(unsigned char* buff, int _Nk) {
                 ch += 1<<(7-j);
         buff[x++] += ch;
     }
+    
+    /* Sequence cleanup as it can leave traces in memory */
+    std::fill_n(key2, 32*_Nk, 0);
+    std::fill_n(rand, _Nk, 0);
+    delete[] key2, rand;
 }
 
-/**
+/*
  * Generate and expand the key from Nk words(4 bytes) to
  * (Nr+1) words. (NIST doc)
  * @param Nk -> Key-size in words
@@ -386,7 +401,7 @@ void Cipher::keyExpansion(unsigned char* key) {
     }
 }
 
-/**
+/*
  * AddRoundKey to the state and return
  * @param round -> Round number
  * @param w -> Stored KeyExpansion output
@@ -400,10 +415,10 @@ void Cipher::addRoudKey(int round, unsigned char** w, unsigned char** st) {
     }
 }
 
-/**
+/*
  * AES encryption routine
  * @param input - 128 bits that will go through encryption protocol
-*/
+ */
 void Cipher::encrypt(Sequence* input) {
     State state(input);
     addRoudKey(0, w, state.getStateArray());
@@ -421,42 +436,45 @@ void Cipher::encrypt(Sequence* input) {
     shiftRows(state.getStateArray());
     addRoudKey(Nr, w, state.getStateArray());
     input->updateSequence(state.toSequence());
+
+    /* Sequence cleanup as it can leave traces in memory */
+    state.~State();
 }
 
 /******************************************************
                     INVERSE - DECRYPTION
 ******************************************************/
 
-/**
- Shift the columns within the State's row by the row number
- Inverse order compared to original shiftRows method
- @param st - State whose rows will be shifted
+/*
+ * Shift the columns within the State's row by the row number
+ * Inverse order compared to original shiftRows method
+ * @param st - State whose rows will be shifted
  */
-void Cipher::invShiftRows(unsigned char** st){
+void Cipher::invShiftRows(unsigned char** st) {
     int row = 1;
     shiftColumnsByOne(st, &row, false);
     shiftColumnsByTwo(st, &(++row));
     shiftColumnsByOne(st, &(++row), true);   //Shift to the left by 1 is equivalent to shift to the right by 3
 }
 
-/**
+/*
  * Inverse of byte substitution. Using inverse S-box
  * @param st - State whose bytes will be substituted
  */ 
-void Cipher::invSubBytes(unsigned char** st){
-    for(int i = 0; i < 4; i++){
-        for(int j=0; j < 4; j++){
+void Cipher::invSubBytes(unsigned char** st) {
+    for(int i = 0; i < 4; i++) {
+        for(int j=0; j < 4; j++) {
             int k = (int)st[i][j];
             st[i][j] = sboxInv[k/16][k%16];
         }
     }
 }
 
-/**
+/*
  * AES Decryption 
  * @param input - 128 bits that will go through decryption protocol
  */ 
-void Cipher::decrypt(Sequence* input){
+void Cipher::decrypt(Sequence* input) {
     State state(input);
     addRoudKey(Nr, w, state.getStateArray());
 
@@ -473,22 +491,25 @@ void Cipher::decrypt(Sequence* input){
     invSubBytes(state.getStateArray());
     addRoudKey(0, w, state.getStateArray());
     input->updateSequence(state.toSequence());
+
+    /* Sequence cleanup as it can leave traces in memory */
+    state.~State();
 }
 
 /******************************************************
                 Output Feedback Mode - OFB
 ******************************************************/
-/**
+/*
  * OFB mode of operation, for encryption and decryption
-    @param encrypting - bool to determine if we are encrypting
-            or decrypting a file, and should generate or look up 
-            for IV
-*/
-void Cipher::OFB(bool encrypting){
+ * @param encrypting - bool to determine if we are encrypting
+ *        or decrypting a file, and should generate or look up 
+ *        for IV
+ */
+void Cipher::OFB(bool encrypting) {
     ofstream ciphertext;
     ciphertext.open(*textPath, ios::binary);
     Sequence ivSq(16);
-    if(encrypting){     //Generate IV if we are encrypting
+    if(encrypting) {     //Generate IV if we are encrypting
         time_t rawtime;
         struct tm * timeinfo;
         unsigned char iv[16];
@@ -499,7 +520,7 @@ void Cipher::OFB(bool encrypting){
         ciphertext.write((const char*)ivSq.getSequence(), ivSq.getSize());  //IV will be first 128-bits of ciphertext
     }
 
-    for(Sequence sq: inputBlock->getSequenceVector()){
+    for(Sequence sq: inputBlock->getSequenceVector()) {
         if(!encrypting){
             ivSq.updateSequence(sq);    //If we are decrypting, then update the value of IV
             encrypting = true;          //by using first 128 bits, and decryption will continue
@@ -510,18 +531,21 @@ void Cipher::OFB(bool encrypting){
         ciphertext.write((const char*)sq.getSequence(), sq.getSize()); 
     }
     ciphertext.close();
+
+    /* Sequence cleanup as it can leave traces in memory */
+    ivSq.~Sequence();
 }
 
 /******************************************************
             Cipher Block Chaining Mode - CBC
 ******************************************************/
-/**
+/*
  * Encrypt using CBC mode of operation.
  * A random, non-secret, IV will be generated for each encryption
  * and attached as the first 128 bits of the cyphertext.
  * Plaintext go through a padding process for CBC encryption.
 */
-void Cipher::CBC_encrypt(){
+void Cipher::CBC_encrypt() {
     ofstream ciphertext;
     ciphertext.open(*textPath, ios::binary);
     Sequence ivSq(16); 
@@ -530,46 +554,49 @@ void Cipher::CBC_encrypt(){
     // ivSq.setSequence(iv);
     generateKey(ivSq.getSequence(), 4);
     ciphertext.write((const char*)ivSq.getSequence(), ivSq.getSize());
-    for(Sequence sq: inputBlock->getSequenceVector()){  
+    for(Sequence sq: inputBlock->getSequenceVector()) {  
         ivSq = sq ^ ivSq;
         encrypt(&ivSq);
         ciphertext.write((const char*)ivSq.getSequence(), ivSq.getSize());
     }
-    ciphertext.close();  
+    ciphertext.close();
+
+    /* Sequence cleanup as it can leave traces in memory */
+    ivSq.~Sequence();
 }
 
-/**
+/*
  * Decrypt using CBC mode of operation.
  * IV is recovered from the first 128 bits of ciphertext
  * Padding is removed from the recovered plaintext before 
  * writting it back into the designated file
-*/
-void Cipher::CBC_decrypt(){
+ */
+void Cipher::CBC_decrypt() {
     Sequence prevSq(16), cipherText(16); 
     int size = inputBlock->getSequenceVector().size();
     bool ivFound = false;
-    for(Sequence sq: inputBlock->getSequenceVector()){         
-        if(!ivFound){
+    for(Sequence sq: inputBlock->getSequenceVector()) {         
+        if(!ivFound) {
             prevSq.updateSequence(sq);  //If we are decrypting, then update the value of IV
             ivFound = true;             //by using first 128 bits, and decryption will continue
             continue;                   //with the next bytes
         }
         cipherText.updateSequence(sq);  //Keep track of ciphertext, we'll need it next round   
         decrypt(&sq);
-        sq = sq ^ prevSq;               
+        sq = sq ^ prevSq;
         prevSq.updateSequence(cipherText);  //Update previous sequence, to ciphertext values
     }
-    try{
+    try {
         removePadding(&inputBlock->getSequenceVector().at(size-1));     //Last block will have padding
-    }catch(const char* str){
+    } catch(const char* str) {
         throw str;
     }
 
-    //Blocks have been decrypted, and padding removed, so write plaintext
+    /* Blocks have been decrypted, and padding removed, so write plaintext */
     ofstream plaintext;
     plaintext.open(*textPath, ios::binary);
     ivFound = false;
-    for(Sequence sq: inputBlock->getSequenceVector()){
+    for(Sequence sq: inputBlock->getSequenceVector()) {
         if(!ivFound){
             ivFound = true;     //Skip first 128 bits, since they are IV
             continue;
@@ -577,15 +604,19 @@ void Cipher::CBC_decrypt(){
         plaintext.write((const char*)sq.getSequence(), sq.getSize());
     }
     plaintext.close();
+
+    /* Sequence cleanup as it can leave traces in memory */
+    prevSq.~Sequence();
+    cipherText.~Sequence();
 }
 
-/**
+/*
  * Remove padding before writting to plaintext. Last 128 bits blocks
  * could have been affected by padding, so look analyze them and update the
  * Sequence size
  * @param lastPlainText - last sequence of plaintext in a Block
 */
-void Cipher::removePadding(Sequence* lastPlainText){ 
+void Cipher::removePadding(Sequence* lastPlainText) { 
     int paddingValue = lastPlainText->getSequence()[15];    //Last byte tells how many bytes to remove      
     bool error = false;
     for(int i = 15; i > 16-paddingValue; i--){
