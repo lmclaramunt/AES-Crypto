@@ -53,7 +53,8 @@ private:
 public:
     Cipher(string* _textPath, int* keyLength, bool padding, bool encrypt);
     Cipher(string* _textPath, string* _aesKeyPath, string* _macKeyPath, bool padding, bool encrypt);         
-    void OFB(bool encrypting);
+    void OFB_encrypt();
+    void OFB_decrypt();
     void CBC_encrypt(); 
     void CBC_decrypt();
 };

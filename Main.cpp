@@ -83,7 +83,7 @@ int main(int argc, char* argv[]){
             if(cbc){
                 c->CBC_encrypt();
             }else{
-                c->OFB(true);
+                c->OFB_encrypt();
             }            
         }else if(decrypt && !filePath.empty() && (ofb || cbc)){
             if(!aesKeyPath.empty() && !macKeyPath.empty())
@@ -93,7 +93,7 @@ int main(int argc, char* argv[]){
             if(cbc){
                 c->CBC_decrypt();
             }else{
-                c->OFB(false);
+                c->OFB_decrypt();
             }
         }else{
             cerr<<"Invalid parameters. Use -h/help for assistance if needed"<<endl;

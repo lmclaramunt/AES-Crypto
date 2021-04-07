@@ -509,36 +509,63 @@ void Cipher::decrypt(Sequence* input, unsigned char** key){
 ******************************************************/
 /**
  * OFB mode of operation, for encryption and decryption
-    @param encrypting - bool to determine if we are encrypting
-            or decrypting a file, and should generate or look up 
-            for IV
 */
-void Cipher::OFB(bool encrypting){
-    ofstream ciphertext;
-    ciphertext.open(*textPath, ios::binary);
-    Sequence ivSq(16);
-    if(encrypting){     //Generate IV if we are encrypting
-        time_t rawtime;
-        struct tm * timeinfo;
-        unsigned char iv[16];
-        time(&rawtime);
-        timeinfo = localtime(&rawtime);
-        strftime ((char *)iv, 16, "%r", timeinfo);
-        ivSq.setSequence(iv);
-        ciphertext.write((const char*)ivSq.getSequence(), ivSq.getSize());  //IV will be first 128-bits of ciphertext
-    }
-
+void Cipher::OFB_encrypt(){   
+    Sequence ivSq(16), ivOriginal(16);
+    time_t rawtime;
+    struct tm * timeinfo;
+    unsigned char iv[16];
+    time(&rawtime);
+    timeinfo = localtime(&rawtime);
+    strftime ((char *)iv, 16, "%r", timeinfo);
+    ivSq.setSequence(iv);
+    ivOriginal.updateSequence(ivSq);        //Keep track of IV to write it in Ciphertext
+    
+    //Encrypt
     for(Sequence sq: inputBlock->getSequenceVector()){
-        if(!encrypting){
-            ivSq.updateSequence(sq);    //If we are decrypting, then update the value of IV
-            encrypting = true;          //by using first 128 bits, and decryption will continue
-            continue;                   //with the next bytes
-        }
         encrypt(&ivSq, aesKeyExp);
         sq = sq ^ ivSq;
-        ciphertext.write((const char*)sq.getSequence(), sq.getSize()); 
+    }
+    //Authenticate
+    Sequence tag = CBC_MAC(*inputBlock, true, false);   //Get MAC Tag, we are encrypting without padding
+    
+    //Write ciphertext
+    ofstream ciphertext;
+    ciphertext.open(*textPath, ios::binary);
+    ciphertext.write((const char*)tag.getSequence(), tag.getSize());
+    ciphertext.write((const char*)ivOriginal.getSequence(), ivOriginal.getSize());
+    for(Sequence sq: inputBlock->getSequenceVector()){
+        ciphertext.write((const char*)sq.getSequence(), sq.getSize());
     }
     ciphertext.close();
+}
+
+void Cipher::OFB_decrypt(){     
+    Sequence tag = CBC_MAC(*inputBlock, false, true);             //Generate MAC Tag from Ciphertext
+    Sequence readTag = inputBlock->getSequenceVector().at(0);     //Get the MAC Tag in the Ciphertext
+    cout<<tag<<endl<<readTag<<endl;
+    if(authenticateSequences(&readTag, &tag)){
+        Sequence ivSq(16);
+        int i = -1;
+        for(Sequence sq: inputBlock->getSequenceVector()){
+            i++;
+            if(i <= 1){
+                ivSq.updateSequence(sq);    //If we are decrypting, then update the value of IV
+                continue;                   //with the next bytes
+            }
+            encrypt(&ivSq, aesKeyExp);
+            sq = sq ^ ivSq; 
+        }
+        ofstream ciphertext;
+        ciphertext.open(*textPath, ios::binary);
+        i = -1;
+        for(Sequence sq: inputBlock->getSequenceVector()){
+            i++;
+            if(i <= 1) continue;   //Don't write neither MAC Tag nor IV in Plaintext
+            ciphertext.write((const char*)sq.getSequence(), sq.getSize()); 
+        }
+        ciphertext.close();
+    }
 }
 
 /******************************************************
@@ -551,7 +578,7 @@ void Cipher::OFB(bool encrypting){
  * Plaintext go through a padding process for CBC encryption.
 */
 void Cipher::CBC_encrypt(){
-    Sequence ivSq(16), ivOriginal(16); 
+    Sequence ivSq(16), ivOriginal(16);      //ivOriginal keeps track of IV, to write it in ciphertext
     // unsigned char iv[16] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,  
     //                         0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
     // ivSq.setSequence(iv);
@@ -564,11 +591,11 @@ void Cipher::CBC_encrypt(){
     Sequence tag = CBC_MAC(*inputBlock, true, true);    // both bool true since we are encrypting with padding
     ofstream ciphertext;
     ciphertext.open(*textPath, ios::binary);
+    ciphertext.write((const char*)tag.getSequence(), tag.getSize());
     ciphertext.write((const char*)ivOriginal.getSequence(), ivOriginal.getSize());
     for(Sequence sq: inputBlock->getSequenceVector()){
         ciphertext.write((const char*)sq.getSequence(), sq.getSize());
     }
-    ciphertext.write((const char*)tag.getSequence(), tag.getSize());
     ciphertext.close();  
 }
 
@@ -578,16 +605,16 @@ void Cipher::CBC_encrypt(){
  * Padding is removed from the recovered plaintext before 
  * writting it back into the designated file
 */
-void Cipher::CBC_decrypt(){
-    Sequence prevSq(16), cipherText(16); 
-    int size = inputBlock->getSequenceVector().size();
-    int i = -1;
-    Sequence tag = CBC_MAC(*inputBlock, false, true);               //Generate MAC Tag from Ciphertext
-    Sequence readTag = inputBlock->getSequenceVector().at(size-1);  //Get the MAC Tag in the Ciphertext
-    if(authenticateSequences(&readTag, &tag)){                      //Compare them for authentication purposes
+void Cipher::CBC_decrypt(){   
+    Sequence tag = CBC_MAC(*inputBlock, false, true);             //Generate MAC Tag from Ciphertext
+    Sequence readTag = inputBlock->getSequenceVector().at(0);     //Get the MAC Tag in the Ciphertext
+    if(authenticateSequences(&readTag, &tag)){                    //Compare them for authentication purposes
+        Sequence prevSq(16), cipherText(16); 
+        int size = inputBlock->getSequenceVector().size();
+        int i = -1;
         for(Sequence sq: inputBlock->getSequenceVector()){         
             i++;
-            if(i == 0 || i == size-1){
+            if(i <= 1){
                 prevSq.updateSequence(sq);  //Skip decryption of first and last Block of ciphertext
                 continue;                   //These blocks are the IV and MAC Tag respectively
             }
@@ -597,7 +624,7 @@ void Cipher::CBC_decrypt(){
             prevSq.updateSequence(cipherText);  //Update previous sequence, to ciphertext values
         }
         try{
-            removePadding(&inputBlock->getSequenceVector().at(size-2));     //Last block will have padding
+            removePadding(&inputBlock->getSequenceVector().at(size-1));     //Last block will have padding
         }catch(const char* str){
             throw str;
         }
@@ -608,7 +635,7 @@ void Cipher::CBC_decrypt(){
         i = -1;
         for(Sequence sq: inputBlock->getSequenceVector()){
             i++;
-            if(i == 0 || i == size-1){
+            if(i <= 1){
                 continue;           //Don't write neither IV nor MAC Tag in Plaintext
             }
             plaintext.write((const char*)sq.getSequence(), sq.getSize());
@@ -654,7 +681,7 @@ Sequence Cipher::CBC_MAC(Block block, bool encrypting, bool padding){
     int i = -1;
     for(Sequence sq: block.getSequenceVector()){
         i++;
-        if(!encrypting && (i == 0 || i == block.getSequenceVector().size()-1)) 
+        if(!encrypting && (i <= 1)) 
             continue;
         // cout<<i<<endl<<tag<<"\n^\n"<<sq;
         tag = tag ^ sq;
