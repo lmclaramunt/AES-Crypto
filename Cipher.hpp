@@ -50,6 +50,8 @@ private:
     Sequence CBC_MAC(Block block, bool encrypting, bool padding);
     void getMessageLength(unsigned char** s, bool encrypting, bool padding);
     bool authenticateSequences(Sequence* first, Sequence* second);
+    void writePlainText();
+    void writeCipherText(Sequence* tag);
 public:
     Cipher(string* _textPath, int* keyLength, bool padding, bool encrypt);
     Cipher(string* _textPath, string* _aesKeyPath, string* _macKeyPath, bool padding, bool encrypt);         
