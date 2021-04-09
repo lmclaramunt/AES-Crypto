@@ -1,10 +1,14 @@
-//  Cipher.cpp
-//  AES
+/*
+ * Cipher.cpp
+ */ 
+
 #include "random"
 #include "Cipher.hpp"
 #include "time.h"
 
-//S-Box
+
+
+/* S-Box */
 const unsigned char Cipher::sbox[16][16] = {
         {0x63 ,0x7c ,0x77 ,0x7b ,0xf2 ,0x6b ,0x6f ,0xc5 ,0x30 ,0x01 ,0x67 ,0x2b ,0xfe ,0xd7 ,0xab ,0x76},
         {0xca ,0x82 ,0xc9 ,0x7d ,0xfa ,0x59 ,0x47 ,0xf0 ,0xad ,0xd4 ,0xa2 ,0xaf ,0x9c ,0xa4 ,0x72 ,0xc0},
@@ -23,7 +27,7 @@ const unsigned char Cipher::sbox[16][16] = {
         {0xe1 ,0xf8 ,0x98 ,0x11 ,0x69 ,0xd9 ,0x8e ,0x94 ,0x9b ,0x1e ,0x87 ,0xe9 ,0xce ,0x55 ,0x28 ,0xdf},
         {0x8c ,0xa1 ,0x89 ,0x0d ,0xbf ,0xe6 ,0x42 ,0x68 ,0x41 ,0x99 ,0x2d ,0x0f ,0xb0 ,0x54 ,0xbb ,0x16}};
 
-//S-box Inverse
+/* Inverse S-Box */
 const unsigned char Cipher::sboxInv[16][16] = {
         {0x52, 0x09, 0x6a, 0xd5, 0x30, 0x36, 0xa5, 0x38, 0xbf, 0x40, 0xa3, 0x9e, 0x81, 0xf3, 0xd7, 0xfb},
         {0x7c, 0xe3, 0x39, 0x82, 0x9b, 0x2f, 0xff, 0x87, 0x34, 0x8e, 0x43, 0x44, 0xc4, 0xde, 0xe9, 0xcb},
@@ -44,10 +48,15 @@ const unsigned char Cipher::sboxInv[16][16] = {
 
 const unsigned char rcon[] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36};
 
-//Initialize a input and key
+
+/*
+ * Initialize and ready the workspace. Set up input, key and 
+ * Nk/Nr based on key length
+ * @param filePath - File's path
+ */ 
 Cipher::Cipher(string* _textPath, int* keyLength, bool padding, bool encrypt): 
-        textPath(_textPath){
-    try{
+        textPath(_textPath) {
+    try {
         if(!fileExists(textPath)) throw "File given in path '-p' wasn't found\n";
         cryptoDir();
         setBlockRoundCombinations(keyLength, true);
@@ -56,16 +65,15 @@ Cipher::Cipher(string* _textPath, int* keyLength, bool padding, bool encrypt):
         vector<unsigned char> inpVct;
         readText(&inpVct);
         inputBlock = new Block(&inpVct, padding);
-    }catch(const char* str){
+    } catch(const char* str) {
         throw str;
     }
 }
 
-
 Cipher::Cipher(string* _textPath, string* _aesKeyPath, string* _macKeyPath, 
     bool padding, bool encrypt): 
     textPath(_textPath), aesKeyPath(*_aesKeyPath), macKeyPath(*_macKeyPath){
-    try{
+    try {
         if(!fileExists(textPath)) throw "File given in path '-p' wasn't found\n";
         int keyLength = getKeySize(&aesKeyPath, &macKeyPath);
         cryptoDir();
@@ -75,11 +83,47 @@ Cipher::Cipher(string* _textPath, string* _aesKeyPath, string* _macKeyPath,
         vector<unsigned char> inpVct;
         readText(&inpVct);
         inputBlock = new Block(&inpVct, padding);
-    }catch(const char* str){
+    } catch(const char* str) {
         throw str;
     }
 }
-/**
+
+/*
+ * Clear out sensitive information such as keyExpansion, message, 
+ * internal States when program ends. Explicitly making the allocated
+ * memory for these variables zero increases security against direct
+ * lookups 
+ * 
+ * DCL57-CPP. Do not let exceptions escape from destructors or deallocation functions
+ * MEM51-CPP. Properly deallocate dynamically allocated resources
+ * MEM53-CPP. Explicitly construct and destruct objects when manually managing object lifetime
+ */
+Cipher::~Cipher() {
+    try {
+        inputBlock->~Block();
+        for(int j=0; j<4*(Nr+1); j++) {
+            std::fill_n(aesKeyExp[j], 4, 0);
+            delete[] aesKeyExp[j];
+            std::fill_n(macKeyExp[j], 4, 0);
+            delete[] macKeyExp[j];
+        }
+        delete[] aesKeyExp, macKeyExp;
+    } catch (...) {
+        cout<<"Could not clear the keyExpansion from memory!"<<endl;
+    }
+}
+
+
+/*
+ * Check if the file exists
+ * @param filePath - File's path
+ */ 
+bool Cipher::fileExists(const string* filePath) {
+  struct stat info;   
+  return stat ((*filePath).c_str(), &info) == 0; 
+}
+
+/*
  * Get the size of a file, the AES and MAC keys in bytes
  * Keys are required to be the same size, for simplicity
  * when expanding them
@@ -98,13 +142,18 @@ int Cipher::getKeySize(string* aesKey, string* macKey){
     return aes_size*8;
 }
 
-Cipher::~Cipher() {
-    inputBlock->~Block();
-    for(int j=0; j<4*(Nr+1); j++) {
-        std::fill_n(w[j], 4, 0);
-        delete[] w[j];
+/*
+ * Create directory where keys will be stored,
+ * if it doesn't exists
+ */
+void Cipher::cryptoDir() {
+    struct stat info;
+    home = getenv("HOME");
+    home += "/.crypto";
+    char *pathname = &home[0];
+    if(stat(pathname, &info) != 0) {
+        mkdir(pathname, 0600);
     }
-    delete[] w;
 }
 
 /*
@@ -134,28 +183,16 @@ void Cipher::setBlockRoundCombinations(int* keyLength, bool setKeyPath) {
     }
 }
 
-/**
- * Create directory where keys will be stored,
- * if it doesn't exists
- */
-void Cipher::cryptoDir() {
-    struct stat info;
-    home = getenv("HOME");
-    home += "/.crypto";
-    const char *pathname = &home[0];
-    if(stat(pathname, &info) != 0) {
-        mkdir(pathname, 0600);
-    }
-}
-
-/**
+/*
  * Get the either either from a file or generate a new one
-    if there is no key to deal with
-    @param encrypt - bool to determine if we are 
-        encrypting or decrypting
-    @param keyPath - path were the key is located
-    @param keyExpanded - pointer to expanded key
-*/
+ * if there is no key to deal with
+ * @param encrypt - bool to determine if we are 
+ *        encrypting or decrypting
+ * @param keyPath - path were the key is located
+ * @param keyExpanded - pointer to expanded key
+ *
+ * FIO51-CPP. Close files when they are no longer needed
+ */
 void Cipher::getKey(bool encrypt, string* keyPath, unsigned char*** keyExpanded){
     unsigned char* key = new unsigned char[4*Nk];
     ifstream input(*keyPath, ios::binary);
@@ -173,10 +210,14 @@ void Cipher::getKey(bool encrypt, string* keyPath, unsigned char*** keyExpanded)
         throw "Missing key for decryption\n";   //User should have key to decrypt
     }
 
+    /* MEM53-CPP. Explicitly construct and destruct objects when 
+       manually managing object lifetime */
     *keyExpanded = new unsigned char*[4*(Nr+1)];    //Expand the key   
     for(int j=0; j<4*(Nr+1); j++)
         (*keyExpanded)[j] = new unsigned char[4];
     keyExpansion(key, *keyExpanded);
+    
+    delete[] key;
 }
 
 /*
@@ -197,35 +238,29 @@ void Cipher::readText(vector<unsigned char>* inpVct) {
     input.close();
 }
 
+/******************************************************
+                AES Encryption/Decryption
+******************************************************/
+
 /*
- * Quickly check if the file exists
- * @param filePath - File's path
- */ 
-bool Cipher::fileExists(const string* filePath) {
-  struct stat info;   
-  return stat ((*filePath).c_str(), &info) == 0; 
+ * Takes four-byte input word and applies the S-box to 
+ * each byte independently
+ * @param wd - four byte word
+ */
+void Cipher::subWord(unsigned char* wd) {
+    for(int i = 0; i < 4; i++){
+        int k = (int)wd[i];
+        wd[i] = sbox[k/16][k%16];
+    }
 }
 
-/**
- Substitute each byte in the State using S-Box
- @param st - 2D 4x4 State array that will be modified
+/*
+ * Substitute each byte in the State using S-Box
+ * @param st - 2D 4x4 State array that will be modified
  */
 void Cipher::subBytes(unsigned char** st) {
     for(int row = 0; row < 4; row++)
         subWord(st[row]);
-}
-
-/*
- * Shift the columns within the State's row by the row number
- * Lowest positions in the row are swaped into highest positions,
- * while highest positions change to lower positions
- * @param st - State whose rows will be shifted
- */
-void Cipher::shiftRows(unsigned char** st) {
-    int row = 1;
-    shiftColumnsByOne(st, &row, true);
-    shiftColumnsByTwo(st, &(++row));
-    shiftColumnsByOne(st, &(++row), false);   //Shift to the right by 1 is equivalent to shift to the left by 3
 }
 
 /*
@@ -267,24 +302,42 @@ void Cipher::shiftColumnsByTwo(unsigned char** st, int* row) {
     }
 }
 
-// method to find xtime()
-unsigned char Cipher::xTime(unsigned char stateVal) {
-    // cout<<hex<<(int)stateVal<<" ";
-    if (stateVal < 0x80) {
-        return stateVal<<1;
-    }
-    return (stateVal<<1)^0x1b;
+/*
+ * Shift the columns within the State's row by the row number
+ * Lowest positions in the row are swaped into highest positions,
+ * while highest positions change to lower positions
+ * @param st - State whose rows will be shifted
+ */
+void Cipher::shiftRows(unsigned char** st) {
+    int row = 1;
+    shiftColumnsByOne(st, &row, true);
+    shiftColumnsByTwo(st, &(++row));
+    shiftColumnsByOne(st, &(++row), false);   //Shift to the right by 1 is equivalent to shift to the left by 3
 }
 
-// method to find the value of the mix column state
-unsigned char Cipher::gFMultiply(unsigned char matrixValue, unsigned char stateVal) {
+/*
+ * Find xtime for mix column
+ * @param st
+ */
+unsigned char Cipher::xTime(unsigned char st) {
+    // cout<<hex<<(int)stateVal<<" ";
+    if (st < 0x80) {
+        return st<<1;
+    }
+    return (st<<1)^0x1b;
+}
+
+/*
+ * Galois-field multiplication
+ */
+unsigned char Cipher::gFMultiply(unsigned char matrixValue, unsigned char st) {
     unsigned char mul = 0x00;
     if (matrixValue%0x02) {
-        mul = stateVal;
+        mul = st;
         matrixValue -= 0x01;
     }
     while (matrixValue) {
-        unsigned char xt = stateVal;
+        unsigned char xt = st;
         for (int i=0; i < (int)log2(matrixValue); i++){
             xt = xTime(xt);
         }
@@ -294,26 +347,12 @@ unsigned char Cipher::gFMultiply(unsigned char matrixValue, unsigned char stateV
     return mul;
 }
 
-// function to mix the columns of the state
+/*
+ * Mix columns of the state
+ * @param st, s2
+ */
 void Cipher::mixColumns(unsigned char** st, unsigned char** s2){
     unsigned char matrixValues[4] = {0x02, 0x03, 0x01, 0x01};
-    for (int i=0; i < 4; i++) {
-        for (unsigned int j=0; j < 4; j++) {
-            if (i==0) {
-                s2[j] = new unsigned char[4];
-            }
-            unsigned int temp = 0;
-            for (unsigned int k=0; k < 4; k++) {
-                temp ^= gFMultiply(matrixValues[(k-j)%4], st[k][i]);
-            }
-            s2[j][i] = temp;
-        }
-    }
-}
-
-// function to inverse mix columns of the state
-void Cipher::invMixColumns(unsigned char** st, unsigned char** s2) {
-    unsigned char matrixValues[4] = {0x0e, 0x0b, 0x0d, 0x09};
     for (int i=0; i < 4; i++) {
         for (unsigned int j=0; j < 4; j++) {
             if (i==0) {
@@ -349,22 +388,14 @@ void Cipher::Rcon(int c, unsigned char* buff) {
 }
 
 /*
- * Takes four-byte input word and applies the S-box to 
- * each byte independently
- * @param wd - four byte word
- */
-void Cipher::subWord(unsigned char* wd) {
-    for(int i = 0; i < 4; i++){
-        int k = (int)wd[i];
-        wd[i] = sbox[k/16][k%16];
-    }
-}
-
-/*
  * Generate Nk random Integers (32 bits) and
  * save them as character
  * @param buff -> Buffer to save the key
  * @param Nk -> Key-size in words
+ * 
+ * MSC50-CPP. Do not use std::rand() for generating pseudorandom numbers
+ * MSC51-CPP. Ensure your random number generator is properly seeded
+ * MSC41-C. Never hard code sensitive information
  */
 void Cipher::generateKey(unsigned char* buff, int _Nk) {
     unsigned int rand[_Nk], x=0;
@@ -392,7 +423,7 @@ void Cipher::generateKey(unsigned char* buff, int _Nk) {
         buff[x++] += ch;
     }
     
-    /* Sequence cleanup as it can leave traces in memory */
+    /* Local variables cleanup as it can leave traces in memory */
     std::fill_n(key2, 32*_Nk, 0);
     std::fill_n(rand, _Nk, 0);
     delete[] key2, rand;
@@ -448,7 +479,7 @@ void Cipher::addRoudKey(int round, unsigned char** w, unsigned char** st) {
 /*
  * AES encryption routine
  * @param input - 128 bits that will go through encryption protocol
-*/
+ */
 void Cipher::encrypt(Sequence* input, unsigned char** key) {
     State state(input);
     addRoudKey(0, key, state.getStateArray());
@@ -467,13 +498,12 @@ void Cipher::encrypt(Sequence* input, unsigned char** key) {
     addRoudKey(Nr, key, state.getStateArray());
     input->updateSequence(state.toSequence());
 
-    /* Sequence cleanup as it can leave traces in memory */
+    /* State cleanup as it can leave traces in memory */
     state.~State();
 }
 
-/******************************************************
-                    INVERSE - DECRYPTION
-******************************************************/
+
+/** DECRYPTION **/
 
 /*
  * Shift the columns within the State's row by the row number
@@ -501,10 +531,29 @@ void Cipher::invSubBytes(unsigned char** st) {
 }
 
 /*
+ * Inverse mix columns of the state
+ * @param st, s2
+ */
+void Cipher::invMixColumns(unsigned char** st, unsigned char** s2) {
+    unsigned char matrixValues[4] = {0x0e, 0x0b, 0x0d, 0x09};
+    for (int i=0; i < 4; i++) {
+        for (unsigned int j=0; j < 4; j++) {
+            if (i==0) {
+                s2[j] = new unsigned char[4];
+            }
+            unsigned int temp = 0;
+            for (unsigned int k=0; k < 4; k++) {
+                temp ^= gFMultiply(matrixValues[(k-j)%4], st[k][i]);
+            }
+            s2[j][i] = temp;
+        }
+    }
+}
+
+/*
  * AES Decryption 
  * @param input - 128 bits that will go through decryption protocol
- */ 
-
+ */
 void Cipher::decrypt(Sequence* input, unsigned char** key){
     State state(input);
     addRoudKey(Nr, key, state.getStateArray());
@@ -523,18 +572,221 @@ void Cipher::decrypt(Sequence* input, unsigned char** key){
     addRoudKey(0, key, state.getStateArray());
     input->updateSequence(state.toSequence());
 
-    /* Sequence cleanup as it can leave traces in memory */
+    /* State cleanup as it can leave traces in memory */
     state.~State();
 }
 
-/******************************************************
-                Output Feedback Mode - OFB
+
+/*****************************************************
+                        MAC
 ******************************************************/
-/**
+
+/*
+ * CBC-MAC used for authentication purposes
+ * Different keys are used for authorization and authentication
+ * It follows the following format, with the length of the ciphertext
+ * @param Block - The block, including IV, that will be authenticated
+ * @param encrypting - bool to determine if we are encrypting or decrypting
+ * @param padding - bool to determine if padding was needed during the process
+ * @return - MAC Tag
+*/
+Sequence Cipher::CBC_MAC(Block block, bool encrypting, bool padding){
+    Sequence tag(16);
+    unsigned char* mssgLength;
+    getMessageLength(&mssgLength, encrypting, padding);
+    tag.setSequence(mssgLength);
+    encrypt(&tag, macKeyExp);
+    int i = -1;
+    for(Sequence sq: block.getSequenceVector()){
+        i++;
+        if(!encrypting && (i < 1)) continue;    //First block of ciphertext contains MAC Tag, so ommit it
+        tag = tag ^ sq;
+        encrypt(&tag, macKeyExp);               //Using a different key than authorization!!
+    }
+    return tag;
+}
+
+
+/*****************************************************
+                    Utilities
+******************************************************/
+
+/*
+ * Checks if two Sequence hold the same values.
+ * It is used to compare MAC Tags which have a size of 16 bytes
+ * @param first - MAC Tag read from ciphertext
+ * @param second - MAC Tag calculated from ciphertext
+*/
+bool Cipher::authenticateSequences(Sequence* first, Sequence* second){
+    bool same = true;
+    for(int i=0; i < 16; i++){
+        if(first->getSequence()[i] != second->getSequence()[i]){
+            same = false;
+            break;
+        }
+    }
+    return same;
+}
+
+/*
+ * Message (plaintext/ciphertext) will be stored in an array so it can be used in
+ * MAC-CBC
+ * @param s - pointer to the array storing the file's length
+ * @param encrypting - bool determining if we are encrypting
+ * @param padding - bool determining if padding should be taken into account
+ *                  when calculating the ciphertext's length
+*/
+void Cipher::getMessageLength(unsigned char** s, bool encrypting, bool padding){
+    *s = new  unsigned char[16];
+    ifstream text(*textPath, ios::binary);
+    text.seekg(0, ios::end);
+    int length = text.tellg();                     //Get the file's length
+    if(encrypting){                                //Length will be the ciphertext length
+        length += 32;                              //Add IV and MAC's Tag length
+        if(padding) 
+            length += (length%16 == 0) ? 16 : (length%16);
+    }
+    unsigned char bytes[sizeof length];
+    std::copy(static_cast<const unsigned char*>(static_cast<const void*>(&length)),
+          static_cast<const unsigned char*>(static_cast<const void*>(&length)) + sizeof length,
+          bytes);
+    for(int i = 0; i < sizeof length; i++)      //First 4 bytes will have length values
+        (*s)[i] = bytes[i];
+    for(int i = sizeof length; i < 16; i++)     //The remained will be initialzed to zero
+        (*s)[i] = 0x00;
+}
+
+/*
+ * Remove padding before writting to plaintext. Last 128 bits blocks
+ * could have been affected by padding, so look analyze them and update the
+ * Sequence size
+ * @param lastPlainText - last sequence of plaintext in a Block
+ */
+void Cipher::removePadding(Sequence* lastPlainText) { 
+    int paddingValue = lastPlainText->getSequence()[15];    //Last byte tells how many bytes to remove      
+    bool error = false;
+    for(int i = 15; i > 16-paddingValue; i--){
+        if(lastPlainText->getSequence()[i] != paddingValue){
+            error = true;
+            break;
+        }
+    }
+    if(!error){
+        lastPlainText->setSize(16-paddingValue);
+    }else
+        throw "Padding error!\n";   //Error if the last block doesn't containt `10` in its last bytes
+}
+
+/*
+ * Write the plaintext to a file
+ */
+void Cipher::writePlainText(){
+    ofstream plaintext;
+    plaintext.open(*textPath, ios::binary);
+    int i = -1;
+    for(Sequence sq: inputBlock->getSequenceVector()){
+        i++;
+        if(i <= 1) continue;           //Don't write neither IV nor MAC Tag in Plaintext
+        plaintext.write((const char*)sq.getSequence(), sq.getSize());
+    }
+    plaintext.close();
+}
+
+/*
+ * Write the ciphertext to a file
+ */
+void Cipher::writeCipherText(Sequence* tag){
+    ofstream ciphertext;
+    ciphertext.open(*textPath, ios::binary);
+    ciphertext.write((const char*)tag->getSequence(), tag->getSize());
+    for(Sequence sq: inputBlock->getSequenceVector()){
+    ciphertext.write((const char*)sq.getSequence(), sq.getSize());
+    }
+    ciphertext.close();
+}
+
+
+/*****************************************************
+            Cipher Block Chaining Mode - CBC
+******************************************************/
+
+/*
+ * Encrypt using CBC mode of operation.
+ * A random, non-secret, IV will be generated for each encryption
+ * and attached as the first 128 bits of the cyphertext.
+ * Plaintext go through a padding process for CBC encryption.
+ */
+void Cipher::CBC_encrypt(){
+    Sequence ivSq(16), ivOriginal(16);      //ivOriginal keeps track of IV, to write it in ciphertext
+    generateKey(ivSq.getSequence(), 4);
+    ivOriginal.updateSequence(ivSq);
+    
+    //Encrypt
+    for(Sequence sq: inputBlock->getSequenceVector()){  
+        ivSq = sq ^ ivSq;
+        encrypt(&ivSq, aesKeyExp);
+    }
+
+    //Authenticate
+    inputBlock->getSequenceVector().
+        insert(inputBlock->getSequenceVector().begin(), ivOriginal);    //Append IV to Ciphertext
+    Sequence tag = CBC_MAC(*inputBlock, true, true);    // both bool true since we are encrypting with padding
+    
+    //Write ciphertext after encryption and authentication
+    writeCipherText(&tag);
+    /* Sequence cleanup as it can leave traces in memory */
+    ivSq.~Sequence();
+}
+
+/*
+ * Decrypt using CBC mode of operation.
+ * IV is recovered from the first 128 bits of ciphertext
+ * Padding is removed from the recovered plaintext before 
+ * writting it back into the designated file
+ */
+void Cipher::CBC_decrypt(){   
+    Sequence tag = CBC_MAC(*inputBlock, false, true);             //Generate MAC Tag from Ciphertext
+    Sequence readTag = inputBlock->getSequenceVector().at(0);     //Get the MAC Tag in the Ciphertext
+    if(authenticateSequences(&readTag, &tag)){                    //Compare them for authentication purposes
+        Sequence prevSq(16), cipherText(16); 
+        int size = inputBlock->getSequenceVector().size();
+        int i = -1;
+        for(Sequence sq: inputBlock->getSequenceVector()){         
+            i++;
+            if(i <= 1){
+                prevSq.updateSequence(sq);  //Skip decryption of first and last Block of ciphertext
+                continue;                   //These blocks are the IV and MAC Tag respectively
+            }
+            cipherText.updateSequence(sq);  //Keep track of ciphertext, we'll need it next round   
+            decrypt(&sq, aesKeyExp);
+            sq = sq ^ prevSq;               
+            prevSq.updateSequence(cipherText);  //Update previous sequence, to ciphertext values
+        }
+        try{
+            removePadding(&inputBlock->getSequenceVector().at(size-1));     //Last block will have padding
+        }catch(const char* str){
+            throw str;
+        }
+
+        //Blocks have been authenticated, decrypted, and padding removed. Ready to write plaintext
+        writePlainText();
+        /* Sequence cleanup as it can leave traces in memory */
+        prevSq.~Sequence();
+        cipherText.~Sequence();
+    }else
+        throw "Ciphertext has been modified, it won't be decrypted!\n";     //Authenticate-then-decrypt
+}
+
+
+/****************************************************
+                Output Feedback Mode - OFB
+*****************************************************/
+
+/*
  * OFB mode of operation for encryption
  * Follow encrypt-then-authenticate principle with CBC-MAC
  * for authentication
-*/
+ */
 void Cipher::OFB_encrypt(){   
     Sequence ivSq(16), ivOriginal(16);
     time_t rawtime;
@@ -571,9 +823,9 @@ void Cipher::OFB_decrypt(){
         int i = -1;
 
         //Decrypt Ciphertext
-        for(Sequence sq: inputBlock->getSequenceVector()){
+        for(Sequence sq: inputBlock->getSequenceVector()) {
             i++;
-            if(i <= 1){
+            if(i <= 1) {
                 ivSq.updateSequence(sq);    //Ignore first 2 block when decrypting, since these
                 continue;                   //Contain MAC Tag and IV respectively
             }
@@ -583,198 +835,6 @@ void Cipher::OFB_decrypt(){
 
         //Ciphertext has been authenticated and decrypted. Ready to write plaintext
         writePlainText();
-    }else
+    } else
         throw "Ciphertext has been modified, it won't be decrypted!\n";     //Authenticate-then-decrypt
-}
-
-/******************************************************
-            Cipher Block Chaining Mode - CBC
-******************************************************/
-/*
- * Encrypt using CBC mode of operation.
- * A random, non-secret, IV will be generated for each encryption
- * and attached as the first 128 bits of the cyphertext.
- * Plaintext go through a padding process for CBC encryption.
-*/
-
-void Cipher::CBC_encrypt(){
-    Sequence ivSq(16), ivOriginal(16);      //ivOriginal keeps track of IV, to write it in ciphertext
-    generateKey(ivSq.getSequence(), 4);
-    ivOriginal.updateSequence(ivSq);
-    
-    //Encrypt
-    for(Sequence sq: inputBlock->getSequenceVector()){  
-        ivSq = sq ^ ivSq;
-        encrypt(&ivSq, aesKeyExp);
-    }
-
-    //Authenticate
-    inputBlock->getSequenceVector().
-        insert(inputBlock->getSequenceVector().begin(), ivOriginal);    //Append IV to Ciphertext
-    Sequence tag = CBC_MAC(*inputBlock, true, true);    // both bool true since we are encrypting with padding
-    
-    //Write ciphertext after encryption and authentication
-    writeCipherText(&tag);
-    /* Sequence cleanup as it can leave traces in memory */
-    ivSq.~Sequence();
-}
-
-/*
- * Decrypt using CBC mode of operation.
- * IV is recovered from the first 128 bits of ciphertext
- * Padding is removed from the recovered plaintext before 
- * writting it back into the designated file
-*/
-void Cipher::CBC_decrypt(){   
-    Sequence tag = CBC_MAC(*inputBlock, false, true);             //Generate MAC Tag from Ciphertext
-    Sequence readTag = inputBlock->getSequenceVector().at(0);     //Get the MAC Tag in the Ciphertext
-    if(authenticateSequences(&readTag, &tag)){                    //Compare them for authentication purposes
-        Sequence prevSq(16), cipherText(16); 
-        int size = inputBlock->getSequenceVector().size();
-        int i = -1;
-        for(Sequence sq: inputBlock->getSequenceVector()){         
-            i++;
-            if(i <= 1){
-                prevSq.updateSequence(sq);  //Skip decryption of first and last Block of ciphertext
-                continue;                   //These blocks are the IV and MAC Tag respectively
-            }
-            cipherText.updateSequence(sq);  //Keep track of ciphertext, we'll need it next round   
-            decrypt(&sq, aesKeyExp);
-            sq = sq ^ prevSq;               
-            prevSq.updateSequence(cipherText);  //Update previous sequence, to ciphertext values
-        }
-        try{
-            removePadding(&inputBlock->getSequenceVector().at(size-1));     //Last block will have padding
-        }catch(const char* str){
-            throw str;
-        }
-
-        //Blocks have been authenticated, decrypted, and padding removed. Ready to write plaintext
-        writePlainText();
-        /* Sequence cleanup as it can leave traces in memory */
-        prevSq.~Sequence();
-        cipherText.~Sequence();
-    }else
-        throw "Ciphertext has been modified, it won't be decrypted!\n";     //Authenticate-then-decrypt
-}
-
-/*
- * Remove padding before writting to plaintext. Last 128 bits blocks
- * could have been affected by padding, so look analyze them and update the
- * Sequence size
- * @param lastPlainText - last sequence of plaintext in a Block
-*/
-void Cipher::removePadding(Sequence* lastPlainText) { 
-    int paddingValue = lastPlainText->getSequence()[15];    //Last byte tells how many bytes to remove      
-    bool error = false;
-    for(int i = 15; i > 16-paddingValue; i--){
-        if(lastPlainText->getSequence()[i] != paddingValue){
-            error = true;
-            break;
-        }
-    }
-    if(!error){
-        lastPlainText->setSize(16-paddingValue);
-    }else
-        throw "Padding error!\n";   //Error if the last block doesn't containt `10` in its last bytes
-}
-
-/******************************************************
-                        MAC
-******************************************************/
-/**
- * CBC-MAC used for authentication purposes
- * Different keys are used for authorization and authentication
- * It follows the following format, with the length of the ciphertext
- * @param Block - The block, including IV, that will be authenticated
- * @param encrypting - bool to determine if we are encrypting or decrypting
- * @param padding - bool to determine if padding was needed during the process
- * @return - MAC Tag
-*/
-Sequence Cipher::CBC_MAC(Block block, bool encrypting, bool padding){
-    Sequence tag(16);
-    unsigned char* mssgLength;
-    getMessageLength(&mssgLength, encrypting, padding);
-    tag.setSequence(mssgLength);
-    encrypt(&tag, macKeyExp);
-    int i = -1;
-    for(Sequence sq: block.getSequenceVector()){
-        i++;
-        if(!encrypting && (i < 1)) continue;    //First block of ciphertext contains MAC Tag, so ommit it
-        tag = tag ^ sq;
-        encrypt(&tag, macKeyExp);               //Using a different key than authorization!!
-    }
-    return tag;
-}
-
-/**
- * Message (plaintext/ciphertext) will be stored in an array so it can be used in
- * MAC-CBC
- * @param s - pointer to the array storing the file's length
- * @param encrypting - bool determining if we are encrypting
- * @param padding - bool determining if padding should be taken into account
- *                  when calculating the ciphertext's length
-*/
-void Cipher::getMessageLength(unsigned char** s, bool encrypting, bool padding){
-    *s = new  unsigned char[16];
-    ifstream text(*textPath, ios::binary);
-    text.seekg(0, ios::end);
-    int length = text.tellg();                     //Get the file's length
-    if(encrypting){                                //Length will be the ciphertext length
-        length += 32;                              //Add IV and MAC's Tag length
-        if(padding) 
-            length += (length%16 == 0) ? 16 : (length%16);
-    }
-    unsigned char bytes[sizeof length];
-    std::copy(static_cast<const unsigned char*>(static_cast<const void*>(&length)),
-          static_cast<const unsigned char*>(static_cast<const void*>(&length)) + sizeof length,
-          bytes);
-    for(int i = 0; i < sizeof length; i++)      //First 4 bytes will have length values
-        (*s)[i] = bytes[i];
-    for(int i = sizeof length; i < 16; i++)     //The remained will be initialzed to zero
-        (*s)[i] = 0x00;
-}
-
-/**
- * Checks if two Sequence hold the same values.
- * It is used to compare MAC Tags which have a size of 16 bytes
- * @param first - MAC Tag read from ciphertext
- * @param second - MAC Tag calculated from ciphertext
-*/
-bool Cipher::authenticateSequences(Sequence* first, Sequence* second){
-    bool same = true;
-    for(int i=0; i < 16; i++){
-        if(first->getSequence()[i] != second->getSequence()[i]){
-            same = false;
-            break;
-        }
-    }
-    return same;
-}
-
-/******************************************************
-                    Utilities
-******************************************************/
-
-//Write the ciphertext
-void Cipher::writePlainText(){
-    ofstream plaintext;
-    plaintext.open(*textPath, ios::binary);
-    int i = -1;
-    for(Sequence sq: inputBlock->getSequenceVector()){
-        i++;
-        if(i <= 1) continue;           //Don't write neither IV nor MAC Tag in Plaintext
-        plaintext.write((const char*)sq.getSequence(), sq.getSize());
-    }
-    plaintext.close();
-}
-
-void Cipher::writeCipherText(Sequence* tag){
-    ofstream ciphertext;
-    ciphertext.open(*textPath, ios::binary);
-    ciphertext.write((const char*)tag->getSequence(), tag->getSize());
-    for(Sequence sq: inputBlock->getSequenceVector()){
-    ciphertext.write((const char*)sq.getSequence(), sq.getSize());
-    }
-    ciphertext.close();
 }

@@ -1,11 +1,16 @@
-//  Sequence.hpp
-//  AES
+/*
+ * Sequence.hpp
+ */ 
+
 #ifndef Sequence_hpp
 #define Sequence_hpp
 
-#include <stdio.h>
-#include <algorithm>
-#include <ostream>
+#include "stdio.h"
+#include "algorithm"
+#include "ostream"
+
+
+
 using namespace std;
 
 class Sequence {
@@ -14,8 +19,7 @@ class Sequence {
         int size;
     public:
         Sequence(int _size);
-        ~Sequence();
-        unsigned char *const & getSequence();
+        unsigned char* &getSequence();
         void setSequence(unsigned char* sq);
         void setSize(int _size);
         int getSize();

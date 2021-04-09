@@ -1,18 +1,20 @@
-//  Block.hpp
-//  AES
-
+/*
+ * Block.hpp
+ */ 
 
 #ifndef Block_hpp
 #define Block_hpp
 
-#include <stdio.h>
-#include <vector>
-#include <string>
-#include <iostream>
+#include "stdio.h"
+#include "vector"
+#include "string"
+#include "iostream"
 #include "Sequence.hpp"
+
+
+
 using namespace std;
 
-//Block containing a vector Sequence
 class Block {
     private:
         vector<Sequence> sequenceVct;

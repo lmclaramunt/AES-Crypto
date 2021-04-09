@@ -1,11 +1,14 @@
-//  State.hpp
-//  AES
+/*
+ * State.hpp
+ */
 
 #ifndef State_hpp
 #define State_hpp
 
-#include <stdio.h>
+#include "stdio.h"
 #include "Sequence.hpp"
+
+
 
 class State {
     private:
