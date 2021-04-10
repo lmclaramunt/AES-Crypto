@@ -1,14 +1,17 @@
-//  State.cpp
-//  AES
+/*
+ * State.cpp
+ */
 
 #include "State.hpp"
 
-/**
-     Constructor
-     Initialize a state of 4 x 4 characters from input sequence
-     @param sq - input sequence reference
+
+
+/*
+ * Constructor
+ * Initialize a state of 4 x 4 characters from input sequence
+ * @param sq - input sequence reference
  */
-State::State(Sequence* sq): s(new unsigned char*[4]){
+State::State(Sequence* sq): s(new unsigned char*[4]) {
     for (int i=0; i < 4; i++) {
         s[i] = new unsigned char[4];
     }
@@ -18,6 +21,48 @@ State::State(Sequence* sq): s(new unsigned char*[4]){
         }
     }
 }
+
+/*
+ * Destructor for cleanup
+ */
+State::~State() {
+    try {
+        for (int i=0; i < 4; i++) 
+            for (int j=0; j < 4; j++) s[i][j] = 0;
+    } catch (...) {
+        throw "Failed to override the used State!\n";
+    }
+}
+
+/*
+ * Get state array
+ * Return: state reference pointer
+ */
+unsigned char** State::getStateArray() const {
+    return s;
+}
+
+/*
+ * Convert State to Sequence
+ */
+Sequence State::toSequence() const {
+    Sequence sq(16);
+    for(int column = 0; column < 4; column++) {
+        for(int row = 0; row < 4; row++){    
+            sq.getSequence()[row + 4*column] = s[row][column];
+        }
+    }
+    return sq;
+}
+
+/*
+ *  Set State
+ */
+void State::setStateArray(unsigned char** st){
+    s = st;
+}
+
+
 
 /*
  * Function to print hex value of each char in the state
@@ -36,7 +81,7 @@ ostream& operator<<(ostream& os, const State& state) {
 }
 
 /*
- * XOR operation for states
+ * XOR operation for States
  * (Over-ridden function)
  */
 State& operator^(State& a, State& b) {
@@ -46,29 +91,4 @@ State& operator^(State& a, State& b) {
         }
     }
     return a;
-}
-
-/*
- * Get state array
- * Return: state reference pointer
- */
-unsigned char** State::getStateArray() const{
-    return s;
-}
-
-Sequence State::toSequence() const{
-    Sequence sq(16);
-    for(int column = 0; column < 4; column++){
-        for(int row = 0; row < 4; row++){    
-            sq.getSequence()[row + 4*column] = s[row][column];
-        }
-    }
-    return sq;
-}
-
-/*
- *  Setters
- */
-void State::setStateArray(unsigned char** newS){
-    s = newS;
 }
