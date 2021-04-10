@@ -1,6 +1,8 @@
 /*
  * Block.cpp
- */ 
+ * The Block class is used to represent blocks.
+ * It has all the methods to convert input text into blocks of size Nb (4 bytes) and adds padding if necessary.
+*/
 
 #include "Block.hpp"
 

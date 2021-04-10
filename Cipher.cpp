@@ -1,6 +1,8 @@
 /*
  * Cipher.cpp
- */ 
+ * All the specifications and methods of Cipher and Inverse Cipher are present in this class.
+ * It has all the methods needed for encryption, decryption, and key expansion.
+*/ 
 
 #include "random"
 #include "Cipher.hpp"
@@ -316,28 +318,30 @@ void Cipher::shiftRows(unsigned char** st) {
 }
 
 /*
- * Find xtime for mix column
- * @param st
+ * Find xtime of the input.
+ * It represents GF multiplication by x which is equivalent to {02} in byte representation 
+ * @param s - an unsigned char which has to be multiplied by {02}
  */
-unsigned char Cipher::xTime(unsigned char st) {
-    // cout<<hex<<(int)stateVal<<" ";
-    if (st < 0x80) {
-        return st<<1;
+unsigned char Cipher::xTime(unsigned char s) {
+    if (s < 0x80) {
+        return s<<1;
     }
-    return (st<<1)^0x1b;
+    return (s<<1)^0x1b;
 }
 
 /*
  * Galois-field multiplication
+ * Implementation of polynomial multiplication of higher powers of x using xtime operation.
+ * @param matrixVlaue - value in the mixCol or invMixCol matrix, stateValue - value in the state to be multiplied
  */
-unsigned char Cipher::gFMultiply(unsigned char matrixValue, unsigned char st) {
+unsigned char Cipher::gFMultiply(unsigned char matrixValue, unsigned char stateValue) {
     unsigned char mul = 0x00;
     if (matrixValue%0x02) {
-        mul = st;
+        mul = stateValue;
         matrixValue -= 0x01;
     }
     while (matrixValue) {
-        unsigned char xt = st;
+        unsigned char xt = stateValue;
         for (int i=0; i < (int)log2(matrixValue); i++){
             xt = xTime(xt);
         }
@@ -349,7 +353,7 @@ unsigned char Cipher::gFMultiply(unsigned char matrixValue, unsigned char st) {
 
 /*
  * Mix columns of the state
- * @param st, s2
+ * @param st - previous State, s2 - save result in the new State
  */
 void Cipher::mixColumns(unsigned char** st, unsigned char** s2){
     unsigned char matrixValues[4] = {0x02, 0x03, 0x01, 0x01};
@@ -532,7 +536,7 @@ void Cipher::invSubBytes(unsigned char** st) {
 
 /*
  * Inverse mix columns of the state
- * @param st, s2
+ * @param st - previous State, s2 - save result in the new State
  */
 void Cipher::invMixColumns(unsigned char** st, unsigned char** s2) {
     unsigned char matrixValues[4] = {0x0e, 0x0b, 0x0d, 0x09};
