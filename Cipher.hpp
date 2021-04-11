@@ -1,5 +1,6 @@
 /*
  * Cipher.hpp
+ * The structure of Cipher class
  */ 
 
 #ifndef Cipher_hpp
