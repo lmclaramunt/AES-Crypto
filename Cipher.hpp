@@ -14,8 +14,6 @@
 #include "State.hpp"
 #include "Block.hpp"
 
-
-
 class Cipher{
     private:
         /* Enc/Dec variables-methods */
@@ -64,7 +62,8 @@ class Cipher{
 
     public:
         Cipher(string* _textPath, int* keyLength, bool padding, bool encrypt);
-        Cipher(string* _textPath, string* _aesKeyPath, string* _macKeyPath, bool padding, bool encrypt);         
+        Cipher(string* _textPath, string* _aesKeyPath, string* _macKeyPath, bool padding, bool encrypt);
+        Cipher(string* _textPath, string* _aesKeyPath, string* _macKeyPath, int* keyLength, bool padding, bool encrypt);         
         ~Cipher();  
         void CBC_encrypt();
         void CBC_decrypt();

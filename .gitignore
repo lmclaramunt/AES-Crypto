@@ -6,4 +6,6 @@
 *.out
 *.txt
 *.jpg
+*.aes
+*.DS_Store
 Main

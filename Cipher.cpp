@@ -9,7 +9,6 @@
 #include "time.h"
 
 
-
 /* S-Box */
 const unsigned char Cipher::sbox[16][16] = {
         {0x63 ,0x7c ,0x77 ,0x7b ,0xf2 ,0x6b ,0x6f ,0xc5 ,0x30 ,0x01 ,0x67 ,0x2b ,0xfe ,0xd7 ,0xab ,0x76},
@@ -77,9 +76,28 @@ Cipher::Cipher(string* _textPath, string* _aesKeyPath, string* _macKeyPath,
     textPath(_textPath), aesKeyPath(*_aesKeyPath), macKeyPath(*_macKeyPath){
     try {
         if(!fileExists(textPath)) throw "File given in path '-p' wasn't found\n";
+        if(!fileExists(_aesKeyPath)) throw "Key given in '-aes' wasn't found\n";
+        if(!fileExists(_macKeyPath)) throw "Key given in '-mac' wasn't found\n";
         int keyLength = getKeySize(&aesKeyPath, &macKeyPath);
         cryptoDir();
         setBlockRoundCombinations(&keyLength, false);
+        getKey(encrypt, &aesKeyPath, &aesKeyExp);
+        getKey(encrypt, &macKeyPath, &macKeyExp);
+        vector<unsigned char> inpVct;
+        readText(&inpVct);
+        inputBlock = new Block(&inpVct, padding);
+    } catch(const char* str) {
+        throw str;
+    }
+}
+
+Cipher::Cipher(string* _textPath, string* _aesKeyPath, string* _macKeyPath, 
+    int* keyLength, bool padding, bool encrypt): 
+    textPath(_textPath), aesKeyPath(*_aesKeyPath), macKeyPath(*_macKeyPath){
+    try {
+        if(!fileExists(textPath)) throw "File given in path '-p' wasn't found\n";
+        cryptoDir();
+        setBlockRoundCombinations(keyLength, false);
         getKey(encrypt, &aesKeyPath, &aesKeyExp);
         getKey(encrypt, &macKeyPath, &macKeyExp);
         vector<unsigned char> inpVct;
@@ -154,7 +172,7 @@ void Cipher::cryptoDir() {
     home += "/.crypto";
     char *pathname = &home[0];
     if(stat(pathname, &info) != 0) {
-        mkdir(pathname, 0600);
+        mkdir(pathname, 0770);
     }
 }
 
