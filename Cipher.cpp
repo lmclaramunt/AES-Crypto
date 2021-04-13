@@ -340,11 +340,11 @@ void Cipher::shiftRows(unsigned char** st) {
  * It represents GF multiplication by x which is equivalent to {02} in byte representation 
  * @param s - an unsigned char which has to be multiplied by {02}
  */
-unsigned char Cipher::xTime(unsigned char s) {
-    if (s < 0x80) {
-        return s<<1;
+unsigned char Cipher::xTime(unsigned char st) {
+    if (st < 0x80) {
+        return st<<1;
     }
-    return (s<<1)^0x1b;
+    return (st<<1)^0x1b;
 }
 
 /*
@@ -352,14 +352,14 @@ unsigned char Cipher::xTime(unsigned char s) {
  * Implementation of polynomial multiplication of higher powers of x using xtime operation.
  * @param matrixVlaue - value in the mixCol or invMixCol matrix, stateValue - value in the state to be multiplied
  */
-unsigned char Cipher::gFMultiply(unsigned char matrixValue, unsigned char stateValue) {
+unsigned char Cipher::gFMultiply(unsigned char matrixValue, unsigned char st) {
     unsigned char mul = 0x00;
     if (matrixValue%0x02) {
-        mul = stateValue;
+        mul = st;
         matrixValue -= 0x01;
     }
     while (matrixValue) {
-        unsigned char xt = stateValue;
+        unsigned char xt = st;
         for (int i=0; i < (int)log2(matrixValue); i++){
             xt = xTime(xt);
         }

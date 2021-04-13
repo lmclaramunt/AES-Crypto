@@ -23,8 +23,8 @@ class Cipher{
         unsigned char** aesKeyExp;
         unsigned char** macKeyExp;
 
-        unsigned char xTime(unsigned char stateVal);
-        unsigned char gFMultiply(unsigned char matrixValue, unsigned char stateVal);
+        unsigned char xTime(unsigned char st);
+        unsigned char gFMultiply(unsigned char matrixValue, unsigned char st);
         void shiftColumnsByOne(unsigned char** st, int* row, bool leftDir);
         void shiftColumnsByTwo(unsigned char** st, int* row);
         void RotWord(unsigned char* w);
