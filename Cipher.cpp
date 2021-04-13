@@ -1,11 +1,12 @@
 /*
  * Cipher.cpp
- */ 
+ * All the specifications and methods of Cipher and Inverse Cipher are present in this class.
+ * It has all the methods needed for encryption, decryption, and key expansion.
+*/ 
 
 #include "random"
 #include "Cipher.hpp"
 #include "time.h"
-
 
 
 /* S-Box */
@@ -75,9 +76,28 @@ Cipher::Cipher(string* _textPath, string* _aesKeyPath, string* _macKeyPath,
     textPath(_textPath), aesKeyPath(*_aesKeyPath), macKeyPath(*_macKeyPath){
     try {
         if(!fileExists(textPath)) throw "File given in path '-p' wasn't found\n";
+        if(!fileExists(_aesKeyPath)) throw "Key given in '-aes' wasn't found\n";
+        if(!fileExists(_macKeyPath)) throw "Key given in '-mac' wasn't found\n";
         int keyLength = getKeySize(&aesKeyPath, &macKeyPath);
         cryptoDir();
         setBlockRoundCombinations(&keyLength, false);
+        getKey(encrypt, &aesKeyPath, &aesKeyExp);
+        getKey(encrypt, &macKeyPath, &macKeyExp);
+        vector<unsigned char> inpVct;
+        readText(&inpVct);
+        inputBlock = new Block(&inpVct, padding);
+    } catch(const char* str) {
+        throw str;
+    }
+}
+
+Cipher::Cipher(string* _textPath, string* _aesKeyPath, string* _macKeyPath, 
+    int* keyLength, bool padding, bool encrypt): 
+    textPath(_textPath), aesKeyPath(*_aesKeyPath), macKeyPath(*_macKeyPath){
+    try {
+        if(!fileExists(textPath)) throw "File given in path '-p' wasn't found\n";
+        cryptoDir();
+        setBlockRoundCombinations(keyLength, false);
         getKey(encrypt, &aesKeyPath, &aesKeyExp);
         getKey(encrypt, &macKeyPath, &macKeyExp);
         vector<unsigned char> inpVct;
@@ -152,7 +172,7 @@ void Cipher::cryptoDir() {
     home += "/.crypto";
     char *pathname = &home[0];
     if(stat(pathname, &info) != 0) {
-        mkdir(pathname, 0600);
+        mkdir(pathname, 0770);
     }
 }
 
@@ -316,11 +336,11 @@ void Cipher::shiftRows(unsigned char** st) {
 }
 
 /*
- * Find xtime for mix column
- * @param st
+ * Find xtime of the input.
+ * It represents GF multiplication by x which is equivalent to {02} in byte representation 
+ * @param s - an unsigned char which has to be multiplied by {02}
  */
 unsigned char Cipher::xTime(unsigned char st) {
-    // cout<<hex<<(int)stateVal<<" ";
     if (st < 0x80) {
         return st<<1;
     }
@@ -329,6 +349,8 @@ unsigned char Cipher::xTime(unsigned char st) {
 
 /*
  * Galois-field multiplication
+ * Implementation of polynomial multiplication of higher powers of x using xtime operation.
+ * @param matrixVlaue - value in the mixCol or invMixCol matrix, stateValue - value in the state to be multiplied
  */
 unsigned char Cipher::gFMultiply(unsigned char matrixValue, unsigned char st) {
     unsigned char mul = 0x00;
@@ -349,7 +371,7 @@ unsigned char Cipher::gFMultiply(unsigned char matrixValue, unsigned char st) {
 
 /*
  * Mix columns of the state
- * @param st, s2
+ * @param st - previous State, s2 - save result in the new State
  */
 void Cipher::mixColumns(unsigned char** st, unsigned char** s2){
     unsigned char matrixValues[4] = {0x02, 0x03, 0x01, 0x01};
@@ -532,7 +554,7 @@ void Cipher::invSubBytes(unsigned char** st) {
 
 /*
  * Inverse mix columns of the state
- * @param st, s2
+ * @param st - previous State, s2 - save result in the new State
  */
 void Cipher::invMixColumns(unsigned char** st, unsigned char** s2) {
     unsigned char matrixValues[4] = {0x0e, 0x0b, 0x0d, 0x09};

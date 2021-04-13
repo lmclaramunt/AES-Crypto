@@ -1,5 +1,6 @@
 /*
  * State.hpp
+ * The structure of State class
  */
 
 #ifndef State_hpp

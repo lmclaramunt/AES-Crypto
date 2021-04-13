@@ -1,5 +1,7 @@
 /*
  * State.cpp
+ * The State Class has a struct to represent the sequence as a 2D array which consists of 4 rows each having Nb bytes.
+ * All the methods of the Cipher class are performed on the state.
  */
 
 #include "State.hpp"

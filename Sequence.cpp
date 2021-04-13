@@ -1,6 +1,8 @@
 /*
  * Sequence.cpp
- */ 
+ * The Sequence class represents the input as 128 bit sequence.
+ * It has getter and setter methods and common operations used on sequences.
+ */
 
 #include "Sequence.hpp"
 

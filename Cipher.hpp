@@ -1,5 +1,6 @@
 /*
  * Cipher.hpp
+ * The structure of Cipher class
  */ 
 
 #ifndef Cipher_hpp
@@ -14,8 +15,6 @@
 #include "State.hpp"
 #include "Block.hpp"
 
-
-
 class Cipher{
     private:
         /* Enc/Dec variables-methods */
@@ -24,8 +23,8 @@ class Cipher{
         unsigned char** aesKeyExp;
         unsigned char** macKeyExp;
 
-        unsigned char xTime(unsigned char stateVal);
-        unsigned char gFMultiply(unsigned char matrixValue, unsigned char stateVal);
+        unsigned char xTime(unsigned char st);
+        unsigned char gFMultiply(unsigned char matrixValue, unsigned char st);
         void shiftColumnsByOne(unsigned char** st, int* row, bool leftDir);
         void shiftColumnsByTwo(unsigned char** st, int* row);
         void RotWord(unsigned char* w);
@@ -64,7 +63,8 @@ class Cipher{
 
     public:
         Cipher(string* _textPath, int* keyLength, bool padding, bool encrypt);
-        Cipher(string* _textPath, string* _aesKeyPath, string* _macKeyPath, bool padding, bool encrypt);         
+        Cipher(string* _textPath, string* _aesKeyPath, string* _macKeyPath, bool padding, bool encrypt);
+        Cipher(string* _textPath, string* _aesKeyPath, string* _macKeyPath, int* keyLength, bool padding, bool encrypt);         
         ~Cipher();  
         void CBC_encrypt();
         void CBC_decrypt();

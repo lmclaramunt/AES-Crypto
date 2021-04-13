@@ -19,24 +19,26 @@
 #include "cstring"
 #include "sstream"
 #include "iostream"
-// #include "Sequence.cpp"
-// #include "Block.cpp"
-// #include "State.cpp"
-// #include "Cipher.cpp"
 #include "Cipher.hpp"
-
-
 
 using namespace std;
 
 static void help(string name) {
     cerr<<name<<endl
-        <<"Usage:\n"
-        <<"-e/encrypt [-p/path filePath] && (-ofb || -cbc) && "
-        <<"[-b/bits length] ([-k/key keyPath])"<<endl
-        <<"-d/decrypt [-p/path filePath] && (-ofb || -cbc) && "
-        <<"[-b/bits length] ([-k/key keyPath])"<<endl
-        <<"-h/help"<<endl;
+        <<"Three options are provided:\n"
+        <<"1. Encrypt/Decrypt with keys stored locally in default secret folder\n"
+        <<"\t-e/encrypt [-p/path filePath] && (-ofb || -cbc) && "
+        <<"[-b/bits length]"<<endl
+        <<"\t-d/decrypt [-p/path filePath] && (-ofb || -cbc) && "
+        <<"[-b/bits length]"<<endl
+        <<"2. Encrypt/Decrypt using existing keys in a specified path\n"
+        <<"\t-e/encrypt [-p/path filePath] && [-aes aesPath] && [-mac macPath] && "
+        <<"(-ofb || -cbc)"<<endl
+        <<"\t-d/decrypt [-p/path filePath] && [-aes aesPath] && [-mac macPath] && "
+        <<"(-ofb || -cbc)"<<endl
+        <<"3. Encrypt storing new keys in USB Drive. Include Key's filename in path to USB\n"
+        <<"\t-e/encrypt [-p/path filePath] && [-aes aesPath] && [-mac macPath] && " 
+        <<"(-ofb || -cbc) && [-b/bits length]"<<endl;
 }
 
 int main(int argc, char* argv[]) {
@@ -97,9 +99,12 @@ int main(int argc, char* argv[]) {
         Cipher* c;
         if(encrypt && !filePath.empty() && (ofb || cbc)) {
             if(!aesKeyPath.empty() && !macKeyPath.empty())
-                c = new Cipher(&filePath, &aesKeyPath, &macKeyPath, cbc, true);     //cbc bool determine if 
-            else                                                                                //padding is needed
-                c = new Cipher(&filePath, &keyLength, cbc, true);                               //true - since we're encrypting
+                if(keyLength > 0)
+                    c = new Cipher(&filePath, &aesKeyPath, &macKeyPath, &keyLength, cbc, true);
+                else
+                    c = new Cipher(&filePath, &aesKeyPath, &macKeyPath, cbc, true);     //cbc bool determines if 
+            else                                                                        //padding is needed
+                c = new Cipher(&filePath, &keyLength, cbc, true);                       //true - since we're encrypting
             if(cbc) {
                 c->CBC_encrypt();
             } else {
@@ -107,8 +112,11 @@ int main(int argc, char* argv[]) {
             }            
         } else if(decrypt && !filePath.empty() && (ofb || cbc)) {
             if(!aesKeyPath.empty() && !macKeyPath.empty())
-                c = new Cipher(&filePath, &aesKeyPath, &macKeyPath, false, false);  //both bool to false since we are
-            else                                                                    //decrypting and no padding is needed
+                if(keyLength > 0)
+                    c = new Cipher(&filePath, &aesKeyPath, &macKeyPath, &keyLength, false, false);
+                else
+                   c = new Cipher(&filePath, &aesKeyPath, &macKeyPath, false, false);  //both bool to false since we are
+            else                                                                       //decrypting and no padding is needed
                 c = new Cipher(&filePath, &keyLength, false, false);
             if(cbc) {
                 c->CBC_decrypt();
