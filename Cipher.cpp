@@ -110,9 +110,9 @@ Cipher::Cipher(string* _textPath, string* _aesKeyPath, string* _macKeyPath,
 
 /*
  * Clear out sensitive information such as keyExpansion, message, 
- * internal States when program ends. Explicitly making the allocated
- * memory for these variables zero increases security against direct
- * lookups 
+ * internal States when program ends. Explicitly make the allocated
+ * memory of secret data zero so that any subsequent (erroneous, undefined!) reads of 
+ * uninitialized stack will learn no secret information.
  * 
  * DCL57-CPP. Do not let exceptions escape from destructors or deallocation functions
  * MEM51-CPP. Properly deallocate dynamically allocated resources
