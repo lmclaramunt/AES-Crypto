@@ -17,7 +17,7 @@ purpose, etc. Parameters will be explained in this section. In general, ordering
 * `[-aes aesPath]`: It specifies the path of the key used for AES.
 * `[-mac macPath]`: It specifies the path of the key used for MAC.
 * `[-b/bits length]`: It specifies the length for new AES and MAC key. Both keys are always the same length. Valid lengths ares: 128, 192, and 256.
-* `-h/help`: Displays assistant with execution parameters.
+* `-h/help`: Displays assistance with execution parameters.
 
 ## Execution
 `AES` will execute in different ways according to the parameters given. In general, there are three possible ways to execute it and all of them require a specified
