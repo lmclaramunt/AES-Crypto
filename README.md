@@ -27,19 +27,19 @@ contain keys of different sizes so the parameter `-b/bits` is required. This is 
 possible.<br />
 Example,
 ```
-./AES -e -p asu.png -ofb -b 128
+./AES -e -p TheOne.jpeg -ofb -b 128
 ```
 2. `AES` will generate new keys, both `-aes` and `-mac`, if none are provided when encrypting a file. If you would like to store them on a different place than 
 the hidden `~/.crypto` directory, you are able to provide a specified path (specifying fileName for new keys) where the keys will be stored. This allows you to 
 store keys, for example, in a USB drive which you could hide. The required parameters are the followings.<br />
 Example,
 ```
-./AES -e -p asu.png -cbc -b 192 -aes /Volumes/USB/aesKey-192.aes -mac /Volumes/USB/macKey-192.aes 
+./AES -e -p TheOne.jpeg -cbc -b 192 -aes /Volumes/USB/aesKey-192.aes -mac /Volumes/USB/macKey-192.aes 
 ```
 
 3. Once you have 128, 192, or 256 bits keys in a specified path you could use them to encrypt/decrypt other files. It is similar to the previous to the command, 
 but since the key already exits its length does not need to be stated.<br />
 Example,
 ```
-./AES -e -p asu.png -ofb -aes /Volumes/USB/aesKey-192.aes -mac /Volumes/USB/macKey-192.aes 
+./AES -e -p TheOne.jpeg -ofb -aes /Volumes/USB/aesKey-192.aes -mac /Volumes/USB/macKey-192.aes 
 ```
