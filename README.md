@@ -3,7 +3,8 @@ Implementation of Advanced Encryption Standard (AES) along CBC-MAC authenticatio
 
 ## Compilation 
 A makefile is provided. Executing the `make` command will result on a `AES` executable. <br />
-The `AES` executable can be deleted, along witht the .o files that result from compilation, with the `make clean` command.
+The `AES` executable can be deleted, along witht the .o files that result from compilation, with the `make clean` command.<br />
+C++ 11 is required for proper compilation. 
 
 ## Parameters 
 To properly execute `AES` a set of parameters have to be speficied to determine if a file will be encrypted or decrypted, which mode of operation to use for this 
